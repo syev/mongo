@@ -6,10 +6,10 @@ import itertools
 import threading
 import time
 
-from . import report as _report
-from . import summary as _summary
-from .. import config as _config
-from .. import selector as _selector
+from resmokelib.testing import report as _report
+from resmokelib.testing import summary as _summary
+from resmokelib import config as _config
+from resmokelib import selector as _selector
 
 
 def synchronized(method):

@@ -24,14 +24,9 @@ import urllib
 from distutils import spawn  # pylint: disable=no-name-in-module
 from optparse import OptionParser
 
-# Get relative imports to work when the package is not installed on the PYTHONPATH.
-if __name__ == "__main__" and __package__ is None:
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(os.path.realpath(__file__)))))
 
-from buildscripts.resmokelib.utils import globstar  # pylint: disable=wrong-import-position
-
-from buildscripts.linter import git  # pylint: disable=wrong-import-position
-from buildscripts.linter import parallel  # pylint: disable=wrong-import-position
+from linter import git
+from linter import parallel
 
 ##############################################################################
 #

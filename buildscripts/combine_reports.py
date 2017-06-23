@@ -10,12 +10,8 @@ import os
 import sys
 from optparse import OptionParser
 
-# Get relative imports to work when the package is not installed on the PYTHONPATH.
-if __name__ == "__main__" and __package__ is None:
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from buildscripts.resmokelib.testing import report  # pylint: disable=wrong-import-position
-from buildscripts.resmokelib import utils  # pylint: disable=wrong-import-position
+from resmokelib import utils
+from resmokelib.testing import report
 
 
 def read_json_file(json_file):

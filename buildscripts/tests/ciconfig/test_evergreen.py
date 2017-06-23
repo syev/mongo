@@ -1,4 +1,4 @@
-"""Unit tests for the buildscripts.ciconfig.evergreen module."""
+"""Unit tests for the ciconfig.evergreen module."""
 
 from __future__ import absolute_import
 
@@ -6,7 +6,7 @@ import datetime
 import os
 import unittest
 
-import buildscripts.ciconfig.evergreen as _evergreen
+import ciconfig.evergreen as _evergreen
 
 # pylint: disable=missing-docstring,protected-access
 

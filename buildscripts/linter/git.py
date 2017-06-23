@@ -5,11 +5,11 @@ from __future__ import print_function
 import itertools
 import os
 import re
-from typing import Any, Callable, List, Tuple
+from typing import Callable, List
 
-from buildscripts import git as _git
-from buildscripts import moduleconfig
-from buildscripts.resmokelib.utils import globstar
+import git as _git
+import moduleconfig
+from resmokelib.utils import globstar
 
 # Path to the modules in the mongodb source tree
 # Has to match the string in SConstruct

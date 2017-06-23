@@ -22,20 +22,15 @@ import warnings
 
 import yaml
 
-# Get relative imports to work when the package is not installed on the PYTHONPATH.
-if __name__ == "__main__" and __package__ is None:
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from ciconfig import evergreen as ci_evergreen
+from ciconfig import tags as ci_tags
+import git
+import jiraclient
+import lifecycle_test_failures as tf
+import resmokelib
+from resmokelib import utils
+from resmokelib.utils import globstar
 
-# pylint: disable=wrong-import-position
-from buildscripts import git
-from buildscripts import jiraclient
-from buildscripts import resmokelib
-from buildscripts.resmokelib import utils
-from buildscripts.resmokelib.utils import globstar
-from buildscripts import lifecycle_test_failures as tf
-from buildscripts.ciconfig import evergreen as ci_evergreen
-from buildscripts.ciconfig import tags as ci_tags
-# pylint: enable=wrong-import-position
 
 # pylint: disable=too-many-lines
 

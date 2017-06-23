@@ -9,9 +9,9 @@ import os.path
 import datetime
 import optparse
 
-from . import config as _config
-from . import utils
-from .. import resmokeconfig
+import resmokelib.config as _config
+import resmokelib.utils as utils
+import resmokeconfig
 
 ResmokeConfig = collections.namedtuple(
     "ResmokeConfig",

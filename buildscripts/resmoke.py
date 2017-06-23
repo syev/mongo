@@ -3,25 +3,19 @@
 
 from __future__ import absolute_import
 
-import os.path
 import random
 import sys
 import time
 
-# Get relative imports to work when the package is not installed on the PYTHONPATH.
-if __name__ == "__main__" and __package__ is None:
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# pylint: disable=wrong-import-position
-from buildscripts.resmokelib import config
-from buildscripts.resmokelib import errors
-from buildscripts.resmokelib import logging
-from buildscripts.resmokelib import parser
-from buildscripts.resmokelib import reportfile
-from buildscripts.resmokelib import sighandler
-from buildscripts.resmokelib import suitesconfig
-from buildscripts.resmokelib import testing
-from buildscripts.resmokelib import utils
+from resmokelib import config
+from resmokelib import errors
+from resmokelib import logging
+from resmokelib import parser
+from resmokelib import reportfile
+from resmokelib import sighandler
+from resmokelib import suitesconfig
+from resmokelib import testing
+from resmokelib import utils
 
 
 class Resmoke(object):

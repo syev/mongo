@@ -11,18 +11,14 @@ import threading
 from abc import ABCMeta, abstractmethod
 from typing import Any, Dict, List
 
-# Get relative imports to work when the package is not installed on the PYTHONPATH.
-if __name__ == "__main__" and __package__ is None:
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(os.path.realpath(__file__)))))
-
-from buildscripts.linter import base  # pylint: disable=wrong-import-position
-from buildscripts.linter import git  # pylint: disable=wrong-import-position
-from buildscripts.linter import mypy  # pylint: disable=wrong-import-position
-from buildscripts.linter import parallel  # pylint: disable=wrong-import-position
-from buildscripts.linter import pydocstyle  # pylint: disable=wrong-import-position
-from buildscripts.linter import pylint  # pylint: disable=wrong-import-position
-from buildscripts.linter import runner  # pylint: disable=wrong-import-position
-from buildscripts.linter import yapf  # pylint: disable=wrong-import-position
+from linter import base  # pylint: disable=wrong-import-position
+from linter import git  # pylint: disable=wrong-import-position
+from linter import mypy  # pylint: disable=wrong-import-position
+from linter import parallel  # pylint: disable=wrong-import-position
+from linter import pydocstyle  # pylint: disable=wrong-import-position
+from linter import pylint  # pylint: disable=wrong-import-position
+from linter import runner  # pylint: disable=wrong-import-position
+from linter import yapf  # pylint: disable=wrong-import-position
 
 # List of supported linters
 _LINTERS = [

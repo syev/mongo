@@ -17,11 +17,8 @@ import urlparse
 import requests
 import yaml
 
-# Get relative imports to work when the package is not installed on the PYTHONPATH.
-if __name__ == "__main__" and __package__ is None:
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from buildscripts import resmokelib  # pylint: disable=wrong-import-position
-from buildscripts.ciconfig import evergreen  # pylint: disable=wrong-import-position
+from ciconfig import evergreen
+import resmokelib
 
 API_SERVER_DEFAULT = "https://evergreen.mongodb.com"
 

@@ -33,10 +33,7 @@ if _IS_WINDOWS:
     import win32event
     import win32api
 
-# Get relative imports to work when the package is not installed on the PYTHONPATH.
-if __name__ == "__main__" and __package__ is None:
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from buildscripts.resmokelib import core
+from resmokelib import core
 
 
 def call(args, logger):
