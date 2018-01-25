@@ -10,6 +10,45 @@ import os
 import os.path
 import time
 
+# ###############################################
+
+
+class LoggingConfig(object):
+    def __init__(self):
+        pass
+
+
+class SuitesConfig(object):
+    pass
+
+
+class ResmokeConfig(object):
+    def __init__(self, logging_config, suites_config, test_names):
+        self.logging_config = None
+        self.suites_config = None
+        self.test_names = None
+
+        # Actions.
+        self.list_suites = False
+        self.find_suites = False
+        self.dry_run = None
+        # Fixtures.
+        self.base_port = 20000
+        # Logs.
+        self.
+        # Tests exection.
+        self.shuffle = False
+        self.random_seed = None
+        # Suite and tests specification.
+        self.suite_files = None
+        self.test_files = None
+        self.exclude_with_any_tags = None
+        self.include_with_any_tags = None
+
+    def update(self, config_dict):
+        pass
+
+# ###############################################
 
 ##
 # Default values.
@@ -310,6 +349,6 @@ DEFAULT_INTEGRATION_TEST_LIST = "build/integration_tests.txt"
 
 # External files or executables, used as suite selectors, that are created during the build and
 # therefore might not be available when creating a test membership map.
-EXTERNAL_SUITE_SELECTORS = (DEFAULT_UNIT_TEST_LIST,
-                            DEFAULT_INTEGRATION_TEST_LIST,
-                            DEFAULT_DBTEST_EXECUTABLE)
+EXTERNAL_SUITE_SELECTORS = (_config.DEFAULT_UNIT_TEST_LIST,
+                            _config.DEFAULT_INTEGRATION_TEST_LIST,
+                            _config.DEFAULT_DBTEST_EXECUTABLE)

@@ -21,6 +21,16 @@ from . import reportfile
 from . import testing
 
 
+# ####################### New API
+
+def register(logger, resmoke_report):
+    # TODO implement
+    pass
+
+
+# ###############################
+
+
 def register(logger, suites, start_time):
     """
     On Windows, set up an event object to wait for signal, otherwise, register a signal handler
