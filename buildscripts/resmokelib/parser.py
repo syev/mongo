@@ -4,6 +4,7 @@ Parser for command line arguments.
 
 from __future__ import absolute_import
 
+import collections
 import os
 import os.path
 import optparse
@@ -11,29 +12,6 @@ import optparse
 from . import config as _config
 from . import utils
 from .. import resmokeconfig
-
-
-# ################################################
-
-def parse_command_line():
-    cli_options, cli_args = _parse_command_line()
-    config = _config.ResmokeConfig()
-    # Get configuration from an option file and apply it
-    options_dict = _get_options_config(cli_options.options_file)
-    config.update(options_dict)
-    # Get configuration from the cli options and apply it
-    config.update(cli_options)
-
-    # config = _make_config(options, args)
-    return config
-
-
-def _make_config(options, args):
-    # TODO
-    pass
-
-
-# ################################################
 
 
 # Mapping of the attribute of the parsed arguments (dest) to its key as it appears in the options
@@ -80,6 +58,10 @@ DEST_TO_CONFIG = {
     "wt_engine_config": "wiredTigerEngineConfigString",
     "wt_index_config": "wiredTigerIndexConfigString"
 }
+
+
+ResmokeConfig = collections.namedtuple(
+    "ResmokeConfig", ["list_suites", "find_suites", "suite_files", "test_files", "logging_config"])
 
 
 def _parse_command_line():
@@ -305,12 +287,18 @@ def _parse_command_line():
 
     options, args = parser.parse_args()
 
-    validate_options(parser, options, args)
+    _validate_options(parser, options, args)
+    _update_config_vars(options)
 
-    return options, args
+    return ResmokeConfig(
+        list_suites=options.list_suites,
+        find_suites=options.find_suites,
+        suite_files=options.suite_files,
+        test_files=args,
+        logging_config=_get_logging_config(options.logger_file))
 
 
-def validate_options(parser, options, args):
+def _validate_options(parser, options, args):
     """
     Do preliminary validation on the options and error on any invalid options.
     """
@@ -324,11 +312,7 @@ def validate_options(parser, options, args):
                      .format(options.executor_file, " ".join(args)))
 
 
-def get_logging_config(values):
-    return _get_logging_config(values.logger_file)
-
-
-def update_config_vars(values):
+def _update_config_vars(values):
     # file name -> "options" section of the yaml file
     options = _get_options_config(values.options_file)
 
