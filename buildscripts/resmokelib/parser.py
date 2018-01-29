@@ -61,14 +61,11 @@ DEST_TO_CONFIG = {
 
 
 ResmokeConfig = collections.namedtuple(
-    "ResmokeConfig", ["list_suites", "find_suites", "suite_files", "test_files", "logging_config"])
+    "ResmokeConfig", ["list_suites", "find_suites", "dry_run", "suite_files", "test_files",
+                      "include_with_any_tags", "exclude_with_any_tags", "logging_config"])
 
 
-def _parse_command_line():
-    """
-    Parses the command line arguments passed to resmoke.py.
-    """
-
+def _make_parser():
     parser = optparse.OptionParser()
 
     parser.add_option("--suites", dest="suite_files", metavar="SUITE1,SUITE2",
@@ -120,7 +117,7 @@ def _parse_command_line():
                             " run."))
 
     parser.add_option("-n", action="store_const", const="tests", dest="dry_run",
-                      help=("Output the tests that would be run."))
+                      help="Output the tests that would be run.")
 
     # TODO: add support for --dryRun=commands
     parser.add_option("--dryRun", type="choice", action="store", dest="dry_run",
@@ -233,7 +230,7 @@ def _parse_command_line():
 
     parser.add_option("--storageEngineCacheSizeGB", dest="storage_engine_cache_size",
                       metavar="CONFIG", help="Set the storage engine cache size configuration"
-                      " setting for all mongod's.")
+                                             " setting for all mongod's.")
 
     parser.add_option("--tagFile", dest="tag_file", metavar="OPTIONS",
                       help="A YAML file that associates tests and tags.")
@@ -284,7 +281,14 @@ def _parse_command_line():
                         prealloc_journal="off",
                         shuffle="auto",
                         stagger_jobs="off")
+    return parser
 
+
+def parse_command_line():
+    """
+    Parses the command line arguments passed to resmoke.py.
+    """
+    parser = _make_parser()
     options, args = parser.parse_args()
 
     _validate_options(parser, options, args)
@@ -293,8 +297,11 @@ def _parse_command_line():
     return ResmokeConfig(
         list_suites=options.list_suites,
         find_suites=options.find_suites,
-        suite_files=options.suite_files,
+        dry_run=options.dry_run,
+        suite_files=options.suite_files.split(","),
         test_files=args,
+        include_with_any_tags=options.include_with_any_tags,
+        exclude_with_any_tags=options.exclude_with_any_tags,
         logging_config=_get_logging_config(options.logger_file))
 
 
@@ -396,11 +403,11 @@ def _get_logging_config(pathname):
     # Named loggers are specified as the basename of the file, without the .yml extension.
     if not utils.is_yaml_file(pathname) and not os.path.dirname(pathname):
         if pathname not in resmokeconfig.NAMED_LOGGERS:
-            raise optparse.OptionValueError("Unknown logger '%s'" % (pathname))
+            raise optparse.OptionValueError("Unknown logger '%s'" % pathname)
         pathname = resmokeconfig.NAMED_LOGGERS[pathname]  # Expand 'pathname' to full path.
 
     if not utils.is_yaml_file(pathname) or not os.path.isfile(pathname):
-        raise optparse.OptionValueError("Expected a logger YAML config, but got '%s'" % (pathname))
+        raise optparse.OptionValueError("Expected a logger YAML config, but got '%s'" % pathname)
 
     return utils.load_yaml_file(pathname).pop("logging")
 

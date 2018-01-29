@@ -21,17 +21,8 @@ from . import reportfile
 from . import testing
 
 
-# ####################### New API
-
+# def register(logger, suites, start_time):
 def register(logger, resmoke_report):
-    # TODO implement
-    pass
-
-
-# ###############################
-
-
-def register(logger, suites, start_time):
     """
     On Windows, set up an event object to wait for signal, otherwise, register a signal handler
     for the SIGUSR1 signal.
@@ -72,9 +63,12 @@ def register(logger, suites, start_time):
         Dumps the stacks of all threads, writes the report file, and logs the suite summaries.
         """
         _dump_stacks(logger, header_msg)
-        reportfile.write(suites)
+        reportfile.write(resmoke_report)
 
-        testing.suite.Suite.log_summaries(logger, suites, time.time() - start_time)
+        summary = resmoke_report.get_summary()
+        logger.info(summary)
+        # TODO check summary is the same
+        # testing.suite.Suite.log_summaries(logger, suites, time.time() - start_time)
 
 
     # On Windows spawn a thread to wait on an event object for signal to dump stacks. For Cygwin
