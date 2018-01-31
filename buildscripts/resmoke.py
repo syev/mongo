@@ -191,7 +191,7 @@ class Resmoke(object):
                                                   self._config.test_files,
                                                   self._config.exclude_with_any_tags,
                                                   self._config.include_with_any_tags)
-            return [(suite, testing.report.SuiteReport(suite.get_display_name()))
+            return [(suite, testing.report.SuiteReport(suite.get_display_name(), len(suite.tests)))
                     for suite in suites]
         except errors.SuiteNotFound as err:
             self._resmoke_logger.error("Failed to parse YAML suite definition: %s", str(err))

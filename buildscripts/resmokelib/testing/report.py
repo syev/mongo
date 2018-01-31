@@ -5,7 +5,9 @@ and timing information for the report.json file.
 
 from __future__ import absolute_import
 
+import collections
 import copy
+import itertools
 import threading
 import time
 import unittest
@@ -39,25 +41,27 @@ class ResmokeReport(object):
         self.suite_reports.append(suite_report)
 
     def get_summary(self):
-        # Same as Suite.log_summaries(logger, suites, time_take)
         time_taken = self.end_time - self.start_time
         sb = ["Summary of all suites: {:d} suites ran in {:0.2f} seconds".format(
             len(self.suite_reports), time_taken)]
         for suite_report in self.suite_reports:
-            # TODO check if suite_report.get_summary() is the same as suite.summarize()
             sb.append("    {}: {}".format(suite_report.suite_name, suite_report.get_summary()))
         return "\n".join(sb)
 
 
 class SuiteReport(object):
-    def __init__(self, suite_name):
+    def __init__(self, suite_name, nb_tests):
         self.suite_name = suite_name
+        self.nb_tests = nb_tests
         self.suite_start = None
         self.suite_end = None
 
         self.interrupted = False
         self.return_code = None
 
+        # TODO Replace with better handling of times
+        self.execution_start_times = []
+        self.execution_end_times = []
         self.executions = []
         self.current_execution = None
 
@@ -71,20 +75,21 @@ class SuiteReport(object):
         self.suite_end = time.time()
 
     def record_execution_start(self):
-        assert self.current_execution is None, "Cannot start an execution, previous execution was not stopped."
+        assert self.current_execution is None, ("Cannot start an execution, "
+                                                "previous execution was not stopped.")
+        self.execution_start_times.append(time.time())
         self.current_execution = []
 
     def record_execution_end(self):
-        assert self.current_execution is not None, "Cannot stop an execution, no execution was started."
+        assert self.current_execution is not None, ("Cannot stop an execution, "
+                                                    "no execution in progress.")
         report_infos = [report.get_info() for report in self.current_execution]
         self.executions.append(TestReportInfo.combine(report_infos))
+        self.execution_end_times.append(time.time())
         self.current_execution = None
 
     # FIXME we shouldn't need these parameters
     def create_test_report(self, job_logger, suite_options):
-        # Should an execution be started?
-        # Create and return a TestResult
-        # Also store it in the current execution
         test_report = TestReport(job_logger, suite_options)
         assert self.current_execution is not None
         self.current_execution.append(test_report)
@@ -101,17 +106,117 @@ class SuiteReport(object):
         self.return_code = return_code
 
     def get_summary(self):
-        return "Summary of {} suite: {}".format(self.suite_name, self._get_summary())
+        header, details = self._get_summary()
+        summary = "Summary of {} suite: {}".format(self.suite_name, header)
+        if details:
+            summary += "\n" + details
+        return summary
+
+    def _get_all_executions(self):
+        executions = copy.copy(self.executions)
+        start_times = copy.copy(self.execution_start_times)
+        end_times = copy.copy(self.execution_end_times)
+        if self.current_execution:
+            report_infos = [report.get_info() for report in self.current_execution]
+            executions.append(TestReportInfo.combine(report_infos))
+            end_times.append(time.time())
+        return start_times, end_times, executions
 
     def _get_summary(self):
-        # TODO check issues with synchronization
-        if not self.executions and not self.current_execution:
-            return "No tests ran."
-        elif not self.executions and self.current_execution:
-            return "Interrupted 1 suite"
+        start_times, end_times, executions = self._get_all_executions()
+        nb_executions = len(executions)
+
+        if nb_executions == 0:
+            return "No tests ran", None
+        elif nb_executions == 1:
+            report = executions[0]
+            time_taken = end_times[0] - start_times[0]
+            return self._get_single_execution_summary(report, time_taken)
+        else:
+            return self._get_multi_executions_summary(executions, start_times, end_times)
+
+    def _get_single_execution_summary(self, report, time_taken):
+        if report.wasSuccessfull():
+            header = "All tests passed."
+        else:
+            header = "Failures or errors occured."
+        return header, "\n".join(self._get_report_summary(report, time_taken))
+
+    def _get_multi_executions_summary(self, reports, start_times, end_times):
+        time_taken = end_times[-1] - start_times[0]
+        header = "Executed {:d} times in {:0.2f} seconds.".format(len(reports), time_taken)
+        combined_report = TestReportInfo.combine(reports)
+        sb = self._get_report_summary(combined_report, time_taken, details=False)
+        execution_nb = 1
+        for report, start_time, end_time in zip(reports, start_times, end_times):
+            sb.append("* Execution #{:d}:".format(execution_nb))
+            report_time_taken = end_time - start_time
+            report_sb = self._get_report_summary(report, report_time_taken)
+            sb.extend(self._indent(report_sb))
+            execution_nb += 1
+        return header, "\n".join(sb)
+
+        # if nb_executions == 0:
+        #     return "No tests ran.", None
+        # elif nb_executions == 1:
+        #     start_time = start_times[0]
+        #     end_time = end_times[0]
+        #     report = executions[0]
+        # else:
+        #     start_time = start_times[0]
+        #     end_time = end_times[-1]
+        #     report = TestReportInfo.combine(executions)
+
+        # time_taken = end_time - start_time
+
+        # if nb_executions > 1:
+        #     header = "Executed {:d} times in {:0.2f} seconds.".format(nb_executions, time_taken)
+        # elif report.was_successful():
+        #     header = "All tests passed."
+        # else:
+        #     header = "Failures or errors occured."
+
+        # details = "\n".join(self._get_report_summary(report, time_taken))
+        # return header, details
+
+    def _get_report_summary(self, test_report, time_taken, details=True):
+        num_failed = test_report.num_failed + test_report.num_interrupted
+        num_run = test_report.num_succeeded + test_report.num_errored + num_failed
+        num_skipped = self.nb_tests + test_report.num_dynamic - num_run
+        sb = [("{:d} test(s) ran in {:0.2f} seconds "
+               "({:d} succeeded, {:d} were skipped, "
+               "{:d} failed, {:d} errored)").format(
+            num_run, time_taken, test_report.num_succeeded,
+            num_skipped, num_failed, test_report.num_errored)]
+        if not details:
+            return sb
+        if num_failed > 0:
+            sb.append("The following tests failed (with exit code):")
+            for test_info in itertools.chain(test_report.get_failed(),
+                                             test_report.get_interrupted()):
+                sb.append("    {} ({:d})".format(test_info.test_id, test_info.return_code))
+        if test_report.num_errored > 0:
+            sb.append("The following tests had errors:")
+            for test_info in test_report.get_errored():
+                sb.append("    {}".format(test_info.test_id))
+        return sb
 
     def get_last_execution_summary(self):
-        pass
+        if not self.executions:
+            return "Summary: No execution."
+        nb_finished_executions = len(self.executions)
+        report = self.executions[nb_finished_executions - 1]
+        start_time = self.execution_start_times[nb_finished_executions - 1]
+        end_time = self.execution_end_times[nb_finished_executions - 1]
+        report_summary = self._get_report_summary(report, end_time - start_time)
+        return "Summary: {}".format("\n".join(report_summary))
+
+    @staticmethod
+    def _indent(text, nb_spaces=4):
+        indent = " " * nb_spaces
+        if isinstance(text, str):
+            return indent + text
+        return [indent + line for line in text]
 
 
 class TestReportInfo(object):
@@ -175,6 +280,15 @@ class TestReportInfo(object):
     def get_by_status(self, status):
         return [info for info in self._test_infos if info.status == status]
 
+    def get_errored(self):
+        return self.get_by_status(STATUS_ERROR)
+
+    def get_interrupted(self):
+        return self.get_by_status(STATUS_TIMEOUT)
+
+    def get_failed(self):
+        return self.get_by_status(STATUS_FAIL)
+
     def get_by_id(self, test_id):
         # Search the list backwards to efficiently find the status and timing information of a test
         # that was recently started.
@@ -197,11 +311,6 @@ class TestReportInfo(object):
         assert test_info.end_time is None, "Test {} was already marked as stopped".format(test_id)
         test_info.end_time = time.time()
         return test_info.start_time - test_info.end_time
-
-    # def add_test_info(self, test_info):
-    #     self._test_infos.append(test_info)
-    #     if test_info.dynamic:
-    #         self.num_dynamic += 1
 
     def add_success(self, test_id, return_code):
         test_info = self.get_by_id(test_id)
@@ -235,7 +344,7 @@ class TestReportInfo(object):
             # silenced.
             test_info.evergreen_status = EVG_STATUS_FAIL
         else:
-            test_info.evergreen_status = self.suite_options.report_failure_status
+            test_info.evergreen_status = report_failure_status
         test_info.return_code = return_code
         self.num_failed += 1
 
@@ -388,42 +497,6 @@ class TestReport(unittest.TestResult):
 
         with self._lock:
             return self._report_info.was_successful()
-
-    # def get_successful(self):
-    #     """
-    #     Returns the status and timing information of the tests that
-    #     executed successfully.
-    #     """
-
-    #     with self._lock:
-    #         return self._report_info.get_by_status(STATUS_SUCCESS)
-
-    # def get_failed(self):
-    #     """
-    #     Returns the status and timing information of the tests that
-    #     raised a failureException during their execution.
-    #     """
-
-    #     with self._lock:
-    #         return self._report_info.get_by_status(STATUS_FAIL)
-
-    # def get_errored(self):
-    #     """
-    #     Returns the status and timing information of the tests that
-    #     raised a non-failureException during their execution.
-    #     """
-
-    #     with self._lock:
-    #         return self._report_info.get_by_status(STATUS_ERROR)
-
-    # def get_interrupted(self):
-    #     """
-    #     Returns the status and timing information of the tests that had
-    #     their execution interrupted.
-    #     """
-
-    #     with self._lock:
-    #         return self._report_info.get_by_status(STATUS_TIMEOUT)
 
     def as_dict(self):
         """

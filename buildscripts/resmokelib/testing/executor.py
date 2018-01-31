@@ -76,9 +76,6 @@ class TestSuiteExecutor(object):
                 self._suite_report.record_execution_start()
                 self._run_execution(test_queue, teardown=last_execution)
                 self._suite_report.record_execution_end()
-                # TODO should this be done in _run_execution?
-                if self._coordinator.interrupted:
-                    raise errors.UserInterrupt()
                 self._log_execution_summary()
                 num_repeats -= 1
         finally:
@@ -95,6 +92,7 @@ class TestSuiteExecutor(object):
             for thread in threads:
                 thread.join()
         except (KeyboardInterrupt, SystemExit):
+            self.coordinator.set_interrupted()
             raise errors.UserInterrupt()
 
     def _log_execution_summary(self):
