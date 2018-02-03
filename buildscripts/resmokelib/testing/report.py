@@ -136,7 +136,7 @@ class SuiteReport(object):
             return self._get_multi_executions_summary(executions, start_times, end_times)
 
     def _get_single_execution_summary(self, report, time_taken):
-        if report.wasSuccessfull():
+        if report.was_successful():
             header = "All tests passed."
         else:
             header = "Failures or errors occured."
