@@ -129,7 +129,7 @@ class ShardedClusterFixture(interface.Fixture):
 
         # Turn off the balancer if it is not meant to be enabled.
         if not self.enable_balancer:
-            client.admin.command({"balancerStop": 1});
+            client.admin.command({"balancerStop": 1})
 
         # Inform mongos about each of the shards
         for shard in self.shards:
@@ -150,38 +150,27 @@ class ShardedClusterFixture(interface.Fixture):
         Shuts down the sharded cluster.
         """
         running_at_start = self.is_running()
-        success = True  # Still a success even if nothing is running.
-
         if not running_at_start:
-            self.logger.info(
+            self.logger.warning(
                 "Sharded cluster was expected to be running in _do_teardown(), but wasn't.")
 
+        success = True  # Still a success even if nothing is running.
+
         if self.configsvr is not None:
-            if running_at_start:
-                self.logger.info("Stopping config server...")
-
-            success = self.configsvr.teardown() and success
-
-            if running_at_start:
-                self.logger.info("Successfully terminated the config server.")
+            success = self._do_try_teardown(self.configsvr, "config server") and success
 
         if self.mongos is not None:
-            if running_at_start:
-                self.logger.info("Stopping mongos...")
+            success = self._do_try_teardown(self.mongos, "mongos") and success
 
-            success = self.mongos.teardown() and success
-
-            if running_at_start:
-                self.logger.info("Successfully terminated the mongos.")
-
-        if running_at_start:
-            self.logger.info("Stopping shards...")
         for shard in self.shards:
-            success = shard.teardown() and success
-        if running_at_start:
-            self.logger.info("Successfully terminated all shards.")
+            success = self._do_try_teardown(shard, "shard") and success
 
-        return success
+        if success:
+            self.logger.info("Successfully stopped all members of sharded cluster fixture")
+        else:
+            msg = "Teardown of sharded cluster fixture failed"
+            self.logger.error(msg)
+            raise errors.ServerFailure(msg)
 
     def is_running(self):
         """
@@ -363,9 +352,10 @@ class _MongoSFixture(interface.Fixture):
             self.logger.info("Starting mongos on port %d...\n%s", self.port, mongos.as_command())
             mongos.start()
             self.logger.info("mongos started on port %d with pid %d.", self.port, mongos.pid)
-        except:
-            self.logger.exception("Failed to start mongos on port %d.", self.port)
-            raise
+        except Exception as err:
+            msg = "Failed to start mongos on port %s: %s" % (self.port, err)
+            self.logger.exception(msg)
+            raise errors.ServerFailure(msg)
 
         self.mongos = mongos
 
@@ -401,32 +391,26 @@ class _MongoSFixture(interface.Fixture):
         self.logger.info("Successfully contacted the mongos on port %d.", self.port)
 
     def _do_teardown(self):
-        running_at_start = self.is_running()
-        success = True  # Still a success even if nothing is running.
+        if self.mongos is None:
+            self.logger.warning("The mongos fixture was not set up.")
+            return  # Teardown is still a success even if nothing is running.
+        if not self.is_running():
+            exit_code = self.mongos.poll()
+            msg = ("mongos on port {:d} was expected to be running before teardown, but wasn't. "
+                   "Process exited with code {:d}").format(self.port, exit_code)
+            self.logger.warning(msg)
+            raise errors.ServerFailure(msg)
 
-        if not running_at_start and self.mongos is not None:
-            self.logger.info(
-                "mongos on port %d was expected to be running in _do_teardown(), but wasn't. "
-                "Exited with code %d.",
-                self.port, self.mongos.poll())
+        self.logger.info("Stopping mongos on port %d with pid %d...", self.port, self.mongos.pid)
+        self.mongos.stop()
+        exit_code = self.mongos.wait()
 
-        if self.mongos is not None:
-            if running_at_start:
-                self.logger.info("Stopping mongos on port %d with pid %d...",
-                                 self.port,
-                                 self.mongos.pid)
-                self.mongos.stop()
-
-            exit_code = self.mongos.wait()
-            success = exit_code == 0
-
-            if running_at_start:
-                self.logger.info("Successfully terminated the mongos on port %d, exited with code"
-                                 " %d",
-                                 self.port,
-                                 exit_code)
-
-        return success
+        if exit_code == 0:
+            self.logger.info("Successfully terminated the mongos on port {:d}".format(self.port))
+        else:
+            self.logger.warning("Terminated the mongos on port {:d}. "
+                                "Process exited with code {:d}.".format(self.port, exit_code))
+            raise errors.ServerFailure("Process exited with code {:d}".format(exit_code))
 
     def is_running(self):
         return self.mongos is not None and self.mongos.poll() is None

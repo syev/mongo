@@ -56,8 +56,8 @@ class TestSuiteExecutor(object):
             self.logger.warning("Suite execution stopping after I/O error")
             # Exit code for IOError on POSIX systems.
             self._suite_report.set_interrupted(return_code=74)
-        except errors.FixtureError:
-            self.logger.warning("Suite execution stopping after fixture error")
+        except errors.ServerFailure as err:
+            self.logger.warning("Suite execution stopping after fixture error: %s", err)
             self._suite_report.set_error(return_code=2)
         except:
             self.logger.exception("Encountered an error when running suite %s (%s).",
@@ -92,7 +92,7 @@ class TestSuiteExecutor(object):
             for thread in threads:
                 thread.join()
         except (KeyboardInterrupt, SystemExit):
-            self.coordinator.set_interrupted()
+            self._coordinator.set_interrupted()
             raise errors.UserInterrupt()
 
     def _log_execution_summary(self):
@@ -195,14 +195,13 @@ class TestSuiteExecutor(object):
         Sets up all the fixtures of the suite.
 
         Raises:
-            FixtureError if a fixture cannot be set up successfully.
+            ServerFailure if a fixture cannot be set up successfully.
         """
         # We reset the internal state of the PortAllocator before calling job.fixture.setup() so
         # that ports used by the fixture during a test suite run earlier can be reused during this
         # current test suite.
         network.PortAllocator.reset()
         for job in self._jobs:
-            # setup() must log and throw the FixtureError
             job.fixture.setup()
         for job in self._jobs:
             job.fixture.await_ready()
@@ -212,7 +211,7 @@ class TestSuiteExecutor(object):
         Tears down all the fixtures of the suite.
 
         Raises:
-            FixtureError if a fixture cannot be torn down successfully.
+            ServerFailure if a fixture cannot be torn down successfully.
         """
         # FIXME make sure we can call this when the fixtures have already been torn down?
         for job in self._jobs:

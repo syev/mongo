@@ -38,7 +38,7 @@ class CleanEveryN(interface.CustomBehavior):
         if self.tests_run < self.n:
             return
 
-        test_name  = "{}:{}".format(test.short_name(), self.__class__.__name__)
+        test_name = "{}:{}".format(test.short_name(), self.__class__.__name__)
         self.hook_test_case = self.make_dynamic_test(testcase.TestCase, "Hook", test_name)
 
         interface.CustomBehavior.start_dynamic_test(self.hook_test_case, test_report)
@@ -47,9 +47,7 @@ class CleanEveryN(interface.CustomBehavior):
                 "%d tests have been run against the fixture, stopping it...",
                 self.tests_run)
             self.tests_run = 0
-
-            if not self.fixture.teardown():
-                raise errors.ServerFailure("%s did not exit cleanly" % (self.fixture))
+            self.fixture.teardown()
 
             self.hook_test_case.logger.info("Starting the fixture back up again...")
             self.fixture.setup()

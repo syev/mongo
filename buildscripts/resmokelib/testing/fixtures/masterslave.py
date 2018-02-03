@@ -12,6 +12,7 @@ import pymongo.errors
 from . import interface
 from . import standalone
 from ... import config
+from ... import errors
 from ... import utils
 
 
@@ -76,39 +77,28 @@ class MasterSlaveFixture(interface.ReplFixture):
             coll = client.resmoke.get_collection("await_ready", write_concern=write_concern)
             coll.insert_one({"awaiting": "ready"})
 
-        try:
-            self.retry_until_wtimeout(insert_fn)
-        except pymongo.errors.WTimeoutError:
-            self.logger.info("Replication of write operation timed out.")
-            raise
+        self.retry_until_wtimeout(insert_fn)
 
     def _do_teardown(self):
         running_at_start = self.is_running()
         success = True  # Still a success if nothing is running.
 
         if not running_at_start:
-            self.logger.info(
+            self.logger.warning(
                 "Master-slave deployment was expected to be running in _do_teardown(), but wasn't.")
 
-        if self.slave is not None:
-            if running_at_start:
-                self.logger.info("Stopping slave...")
+        if self.slave:
+            success = self._do_try_teardown(self.slave, "slave")
 
-            success = self.slave.teardown()
+        if self.master:
+            success = self._do_try_teardown(self.master, "master") and success
 
-            if running_at_start:
-                self.logger.info("Successfully stopped slave.")
-
-        if self.master is not None:
-            if running_at_start:
-                self.logger.info("Stopping master...")
-
-            success = self.master.teardown() and success
-
-            if running_at_start:
-                self.logger.info("Successfully stopped master.")
-
-        return success
+        if success:
+            self.logger.info("Successfully stopped all members of master-slave fixture")
+        else:
+            msg = "Teardown of master-slave fixture failed"
+            self.logger.error(msg)
+            raise errors.ServerFailure(msg)
 
     def is_running(self):
         return (self.master is not None and self.master.is_running() and

@@ -141,10 +141,11 @@ class ReplicaSetFixture(interface.ReplFixture):
         if self.write_concern_majority_journal_default is not None:
             config["writeConcernMajorityJournalDefault"] = self.write_concern_majority_journal_default
         else:
-            serverStatus = client.admin.command({"serverStatus": 1})
-            cmdLineOpts = client.admin.command({"getCmdLineOpts": 1})
-            if not (serverStatus["storageEngine"]["persistent"] and
-                    cmdLineOpts["parsed"].get("storage", {}).get("journal", {}).get("enabled", True)):
+            server_status = client.admin.command({"serverStatus": 1})
+            cmd_line_opts = client.admin.command({"getCmdLineOpts": 1})
+            if not (server_status["storageEngine"]["persistent"] and
+                    cmd_line_opts["parsed"].get("storage", {}).get(
+                        "journal", {}).get("enabled", True)):
                 config["writeConcernMajorityJournalDefault"] = False
 
         if self.replset_config_options.get("configsvr", False):
@@ -190,13 +191,18 @@ class ReplicaSetFixture(interface.ReplFixture):
             except pymongo.errors.OperationFailure as err:
                 # Retry on NodeNotFound errors from the "replSetInitiate" command.
                 if err.code != ReplicaSetFixture._NODE_NOT_FOUND:
-                    raise
+                    msg = ("Operation failure while configuring the "
+                           "replica set fixture: {}").format(err)
+                    self.logger.error(msg)
+                    raise errors.ServerFailure(msg)
 
                 msg = "replSetInitiate failed attempt {0} of {1} with error: {2}".format(
                     attempt, num_initiate_attempts, err)
                 self.logger.error(msg)
                 if attempt == num_initiate_attempts:
-                    raise
+                    msg = "Exceeded number of retries while configuring the replica set fixture"
+                    self.logger.error(msg)
+                    raise errors.ServerFailure(msg)
                 time.sleep(5)  # Wait a little bit before trying again.
 
     def await_ready(self):
@@ -243,20 +249,22 @@ class ReplicaSetFixture(interface.ReplFixture):
         if not running_at_start:
             self.logger.info(
                 "Replica set was expected to be running in _do_teardown(), but wasn't.")
-        else:
-            self.logger.info("Stopping all members of the replica set...")
+
+        self.logger.info("Stopping all members of the replica set...")
 
         if self.initial_sync_node:
-            success = self.initial_sync_node.teardown() and success
+            success = self._do_try_teardown(self.initial_sync_node, "initial sync node")
 
         # Terminate the secondaries first to reduce noise in the logs.
         for node in reversed(self.nodes):
-            success = node.teardown() and success
+            success = self._do_try_teardown(node, "secondary on port %s" % node.port) and success
 
-        if running_at_start:
+        if not success:
+            msg = "Teardown of repica set fixture failed"
+            self.logger.error(msg)
+            raise errors.ServerFailure(msg)
+        elif running_at_start:
             self.logger.info("Successfully stopped all members of the replica set.")
-
-        return success
 
     def is_running(self):
         running = all(node.is_running() for node in self.nodes)

@@ -23,7 +23,7 @@ def make_fixture(class_name, *args, **kwargs):
     """
 
     if class_name not in _FIXTURES:
-        raise ValueError("Unknown fixture class '%s'" % (class_name))
+        raise ValueError("Unknown fixture class '%s'" % class_name)
     return _FIXTURES[class_name](*args, **kwargs)
 
 
@@ -68,15 +68,14 @@ class Fixture(object):
 
     def teardown(self, finished=False):
         """
-        Destroys the fixture. Return true if was successful, and false
-        otherwise.
+        Destroys the fixture.
 
         The fixture's logging handlers are closed if 'finished' is true,
         which should happen when setup() won't be called again.
         """
 
         try:
-            return self._do_teardown()
+            self._do_teardown()
         finally:
             if finished:
                 for handler in self.logger.handlers:
@@ -86,10 +85,19 @@ class Fixture(object):
 
     def _do_teardown(self):
         """
-        Destroys the fixture. Return true if was successful, and false
-        otherwise.
+        Destroys the fixture.
         """
-        return True
+        pass
+
+    def _do_try_teardown(self, fixture, name):
+        try:
+            self.logger.info("Tearing down %s...", name)
+            fixture.teardown()
+            self.logger.info("Successfully tore down %s.", name)
+            return True
+        except errors.ServerFailure as err:
+            self.logger.warning("Error while tearing down %s: %s", name, err)
+            return False
 
     def is_running(self):
         """
@@ -183,8 +191,20 @@ class ReplFixture(Fixture):
             except pymongo.errors.ConnectionFailure:
                 remaining = deadline - time.time()
                 if remaining <= 0.0:
-                    raise errors.ServerFailure(
-                        "Failed to connect to ".format(self.get_driver_connection_url()))
+                    message = "Failed to connect to {} within {} minutes".format(
+                        self.get_driver_connection_url(), ReplFixture.AWAIT_REPL_TIMEOUT_MINS)
+                    self.logger.error(message)
+                    raise errors.ServerFailure(message)
+            except pymongo.errors.WTimeoutError:
+                message = "Replication of write operation timed out."
+                self.logger.error(message)
+                raise errors.ServerFailure(message)
+            except pymongo.errors.PyMongoError as err:
+                message = "Write opertion on {} failed: {}".format(
+                    self.get_driver_connection_url(), err)
+                raise errors.ServerFailure(message)
+#                 raise errors.ServerFailure("Write opertion on {} failed: {}".format(
+#                     self.get_driver_connection_url(), err))
 
 
 class NoOpFixture(Fixture):

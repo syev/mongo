@@ -77,8 +77,8 @@ class Job(object):
         try:
             if not self.fixture.teardown(finished=True):
                 pass
-        except errors.FixtureError:
-            self.logger.warn("Teardown of %s was not successful.", self.fixture)
+        except errors.FixtureError as err:
+            self.logger.warn("Teardown of %s was not successful: %s", self.fixture, err)
             coordinator.set_teardown_error()
         except:
             self.logger.exception("Encountered an error while tearing down %s.", self.fixture)
