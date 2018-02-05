@@ -32,7 +32,6 @@ class TestCase(object):
 
     REGISTERED_NAME = registry.LEAVE_UNREGISTERED
 
-    # def __init__(self, logger, test_kind, test_name):
     def __init__(self, test_kind, test_name, dynamic=False):
         """Initializes the TestCase with the name of the test."""
 
@@ -158,38 +157,38 @@ class TestCase(object):
         raise NotImplementedError("_make_process must be implemented by TestCase subclasses")
 
 
-class DynamicTestCase(TestCase):
-    def as_command(self):
-        return "(dynamic test case)"
-
-
-class ProcessTestCase(TestCase):
-    def as_command(self):
-        """
-        Returns the command invocation used to run the test.
-        """
-        # TODO maybe we can create the command without making the process object
-        # or create the process without giving the test_logger
-        return self._make_process().as_command()
-
-    def _execute(self, test_logger, process):
-        """
-        Runs the specified process.
-        """
-        test_logger.info("Starting %s...\n%s", self.short_description(), process.as_command())
-
-        process.start()
-        test_logger.info("%s started with pid %s.", self.short_description(), process.pid)
-
-        self.return_code = process.wait()
-        if self.return_code != 0:
-            raise errors.TestFailure("%s failed" % (self.short_description()))
-
-        test_logger.info("%s finished.", self.short_description())
-
-    def _make_process(self, test_logger):
-        """
-        Returns a new Process instance that could be used to run the
-        test or log the command.
-        """
-        raise NotImplementedError("_make_process must be implemented by TestCase subclasses")
+# class DynamicTestCase(TestCase):
+#     def as_command(self):
+#         return "(dynamic test case)"
+#
+#
+# class ProcessTestCase(TestCase):
+#     def as_command(self):
+#         """
+#         Returns the command invocation used to run the test.
+#         """
+#         # TODO maybe we can create the command without making the process object
+#         # or create the process without giving the test_logger
+#         return self._make_process().as_command()
+#
+#     def _execute(self, test_logger, process):
+#         """
+#         Runs the specified process.
+#         """
+#         test_logger.info("Starting %s...\n%s", self.short_description(), process.as_command())
+#
+#         process.start()
+#         test_logger.info("%s started with pid %s.", self.short_description(), process.pid)
+#
+#         self.return_code = process.wait()
+#         if self.return_code != 0:
+#             raise errors.TestFailure("%s failed" % (self.short_description()))
+#
+#         test_logger.info("%s finished.", self.short_description())
+#
+#     def _make_process(self, test_logger):
+#         """
+#         Returns a new Process instance that could be used to run the
+#         test or log the command.
+#         """
+#         raise NotImplementedError("_make_process must be implemented by TestCase subclasses")

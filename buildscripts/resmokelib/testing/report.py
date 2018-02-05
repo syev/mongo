@@ -1,19 +1,14 @@
 """
-Extension to the unittest.TestResult to support additional test status
-and timing information for the report.json file.
+Module defining reports for resmoke, suite, and test executions recording
+timing and status information for the report.json file.
 """
 
 from __future__ import absolute_import
 
-import collections
 import copy
 import itertools
 import threading
 import time
-import unittest
-
-from .. import config as _config
-from .. import logging
 
 
 STATUS_SUCCESS = "pass"
@@ -418,7 +413,6 @@ class TestReport(object):
 
     def __init__(self, job_logger, suite_options):
         """Initializes the TestReport with the buildlogger configuration."""
-        # unittest.TestResult.__init__(self)
 
         self.job_logger = job_logger
         self.suite_options = suite_options

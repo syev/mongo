@@ -5,7 +5,6 @@ Custom formatters for the logging handlers.
 from __future__ import absolute_import
 
 import logging
-import sys
 import time
 
 
@@ -42,7 +41,7 @@ class ISO8601Formatter(logging.Formatter):
 
         # The offset is positive if the local timezone is behind (east of) UTC, and negative if it
         # is ahead (west) of UTC.
-        utc_offset_prefix =  "-" if utc_offset_secs > 0 else "+"
+        utc_offset_prefix = "-" if utc_offset_secs > 0 else "+"
         utc_offset_secs = abs(utc_offset_secs)
 
         utc_offset_mins = (utc_offset_secs / 60) % 60

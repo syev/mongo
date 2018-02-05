@@ -46,10 +46,10 @@ def register(logger, resmoke_report):
                 # Wait for task time out to dump stacks.
                 ret = win32event.WaitForSingleObject(event_handle, win32event.INFINITE)
                 if ret != win32event.WAIT_OBJECT_0:
-                    logger.error("_handle_set_event WaitForSingleObject failed: %d" % ret)
+                    logger.error("_handle_set_event WaitForSingleObject failed: %d", ret)
                     return
             except win32event.error as err:
-                logger.error("Exception from win32event.WaitForSingleObject with error: %s" % err)
+                logger.error("Exception from win32event.WaitForSingleObject with error: %s", err)
             else:
                 header_msg = "Dumping stacks due to signal from win32event.SetEvent"
 
@@ -79,7 +79,7 @@ def register(logger, resmoke_report):
                                                          initial_state,
                                                          event_name)
         except win32event.error as err:
-            logger.error("Exception from win32event.CreateEvent with error: %s" % err)
+            logger.error("Exception from win32event.CreateEvent with error: %s", err)
             return
 
         # Register to close event object handle on exit.
@@ -105,12 +105,12 @@ def _dump_stacks(logger, header_msg):
     sb.append(header_msg)
 
     frames = sys._current_frames()
-    sb.append("Total threads: %d" % (len(frames)))
+    sb.append("Total threads: {:d}".format(len(frames)))
     sb.append("")
 
     for thread_id in frames:
         stack = frames[thread_id]
-        sb.append("Thread %d:" % (thread_id))
+        sb.append("Thread {:d}:".format(thread_id))
         sb.append("".join(traceback.format_stack(stack)))
 
     logger.info("\n".join(sb))

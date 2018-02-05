@@ -41,13 +41,17 @@ class MongosTestCase(interface.TestCase):
             self.options["test"] = ""
 
     def run_test(self, test_logger):
+        mongos = None
         try:
             mongos = self._make_process(test_logger)
             self._execute(test_logger, mongos)
         except errors.TestFailure:
             raise
         except:
-            test_logger.exception("Encountered an error running %s.", mongos.as_command())
+            if mongos:
+                test_logger.exception("Encountered an error running %s.", mongos.as_command())
+            else:
+                test_logger.exception("Encountered an error while creating mongos process")
             raise
 
     def _make_process(self, test_logger):

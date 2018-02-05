@@ -14,6 +14,11 @@ class JsCustomBehavior(interface.TestCaseHook):
     REGISTERED_NAME = registry.LEAVE_UNREGISTERED
 
     def __init__(self, hook_logger, fixture, js_filename, description, shell_options=None):
-        test_case = jstest.JSTestCase(js_filename, shell_options=shell_options, test_kind="Hook",
-                                      dynamic=True)
-        interface.TestCaseHook.__init__(self, hook_logger, fixture, description, test_case)
+        interface.TestCaseHook.__init__(self, hook_logger, fixture, description)
+        self._js_file_name = js_filename
+        self._shell_options = shell_options
+
+    def _create_test_case_impl(self, test_name, description, base_test_name):
+        test_case = jstest.JSTestCase(self._js_file_name, shell_options=self._shell_options,
+                                      test_kind="Hook", dynamic=True)
+        test_case.test_name = test_name

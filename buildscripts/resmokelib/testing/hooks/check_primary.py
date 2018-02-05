@@ -36,10 +36,10 @@ class CheckPrimary(interface.CustomBehavior):
 
         raise no_primary_err
 
-    def before_test(self, test, test_report):
+    def before_test(self, test, test_report, job_logger):
         self._primary_url = self._get_primary_url()
 
-    def after_test(self, test, test_report):
+    def after_test(self, test, test_report, job_logger):
         new_primary_url = self._get_primary_url()
 
         if new_primary_url != self._primary_url:
