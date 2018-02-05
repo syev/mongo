@@ -203,7 +203,7 @@ class SuiteReport(object):
 
 class TestReportInfo(object):
     def __init__(self):
-        self._test_infos = []
+        self.test_infos = []
         self.num_dynamic = 0
         self.num_succeeded = 0
         self.num_failed = 0
@@ -212,7 +212,7 @@ class TestReportInfo(object):
 
     def clone(self):
         clone = TestReportInfo()
-        clone._test_infos = copy.copy(self._test_infos)
+        clone.test_infos = copy.copy(self.test_infos)
         clone.num_dynamic = self.num_dynamic
         clone.num_succeeded = self.num_succeeded
         clone.num_failed = self.num_failed
@@ -221,12 +221,12 @@ class TestReportInfo(object):
         return clone
 
     def end_report(self, end_time):
-        for test_info in self._test_infos:
+        for test_info in self.test_infos:
             self._end_test_info(test_info, end_time)
 
-    def _end_test_info(self, test_info, end_time):
+    @staticmethod
+    def _end_test_info(test_info, end_time):
         if test_info.status is None or test_info.return_code is None:
-            # TODO move this to the reportfile module.
             # Mark the test as having timed out if it was interrupted. It might have
             # passed if the suite ran to completion, but we wouldn't know for sure.
             #
@@ -248,7 +248,7 @@ class TestReportInfo(object):
         combining_time = time.time()
         for info in report_infos:
             info.end_report(combining_time)
-            combined_info._test_infos.extend(info._test_infos)
+            combined_info.test_infos.extend(info.test_infos)
             combined_info.num_dynamic += info.num_dynamic
 
         # Recompute number of success, failures, and errors.
@@ -260,7 +260,7 @@ class TestReportInfo(object):
         return combined_info
 
     def get_by_status(self, status):
-        return [info for info in self._test_infos if info.status == status]
+        return [info for info in self.test_infos if info.status == status]
 
     def get_errored(self):
         return self.get_by_status(STATUS_ERROR)
@@ -274,7 +274,7 @@ class TestReportInfo(object):
     def get_by_id(self, test_id):
         # Search the list backwards to efficiently find the status and timing information of a test
         # that was recently started.
-        for test_info in reversed(self._test_infos):
+        for test_info in reversed(self.test_infos):
             if test_info.test_id == test_id:
                 return test_info
         raise ValueError("Details for {} not found in the report".format(test_id))
@@ -282,7 +282,7 @@ class TestReportInfo(object):
     def start_test(self, test_id, dynamic):
         test_info = _TestInfo(test_id, dynamic)
         test_info.start_time = time.time()
-        self._test_infos.append(test_info)
+        self.test_infos.append(test_info)
         if dynamic:
             self.num_dynamic += 1
         return test_info
@@ -359,7 +359,7 @@ class TestReportInfo(object):
         Used to create the report.json file.
         """
         results = []
-        for test_info in self._test_infos:
+        for test_info in self.test_infos:
             result = {
                 "test_file": test_info.test_id,
                 "status": test_info.evergreen_status,
@@ -398,7 +398,7 @@ class TestReportInfo(object):
             test_info.return_code = result["exit_code"]
             test_info.start_time = result["start"]
             test_info.end_time = result["end"]
-            report._test_infos.append(test_info)
+            report.test_infos.append(test_info)
 
             if is_dynamic:
                 report.num_dynamic += 1

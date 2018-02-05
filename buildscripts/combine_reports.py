@@ -77,7 +77,7 @@ def main():
     for report_file in report_files:
         try:
             report_file_json = read_json_file(report_file)
-            test_reports.append(report.TestReport.from_dict(report_file_json))
+            test_reports.append(report.TestReportInfo.from_dict(report_file_json))
         except IOError as e:
             # errno.ENOENT is the error code for "No such file or directory".
             if e.errno == errno.ENOENT:
@@ -85,7 +85,7 @@ def main():
                 continue
             raise
 
-    combined_test_report = report.TestReport.combine(*test_reports)
+    combined_test_report = report.TestReportInfo.combine(*test_reports)
     combined_report = combined_test_report.as_dict()
 
     if options.outfile == "-":

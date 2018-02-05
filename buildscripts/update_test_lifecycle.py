@@ -29,7 +29,7 @@ if __name__ == "__main__" and __package__ is None:
 
 from buildscripts import git
 from buildscripts import jiraclient
-from buildscripts import resmokelib
+from buildscripts.resmokelib import suites as suitesconfig
 from buildscripts.resmokelib.utils import globstar
 from buildscripts import test_failures as tf
 from buildscripts.ciconfig import evergreen as ci_evergreen
@@ -88,7 +88,7 @@ def get_suite_tasks_membership(evg_conf):
 
 def get_test_tasks_membership(evg_conf):
     """Return a dictionary with keys of all tests and list of associated tasks."""
-    test_suites_membership = resmokelib.parser.create_test_membership_map(test_kind="js_test")
+    test_suites_membership = suitesconfig.create_test_membership_map(test_kind="js_test")
     suite_tasks_membership = get_suite_tasks_membership(evg_conf)
     test_tasks_membership = collections.defaultdict(list)
     for test in test_suites_membership.keys():

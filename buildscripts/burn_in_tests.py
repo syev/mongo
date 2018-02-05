@@ -23,7 +23,8 @@ import yaml
 # Get relative imports to work when the package is not installed on the PYTHONPATH.
 if __name__ == "__main__" and __package__ is None:
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from buildscripts import resmokelib
+from buildscripts.resmokelib import suites as suitesconfig
+from buildscripts.resmokelib import utils
 from buildscripts.ciconfig import evergreen
 
 
@@ -213,9 +214,9 @@ def find_exclude_tests(selector_file):
         raise Exception("The selector file " + selector_file +
                         " is missing the 'selector.js_test' key")
 
-    return (resmokelib.utils.default_if_none(js_test.get("exclude_suites"), []),
-            resmokelib.utils.default_if_none(js_test.get("exclude_tasks"), []),
-            resmokelib.utils.default_if_none(js_test.get("exclude_tests"), []))
+    return (utils.default_if_none(js_test.get("exclude_suites"), []),
+            utils.default_if_none(js_test.get("exclude_tasks"), []),
+            utils.default_if_none(js_test.get("exclude_tests"), []))
 
 
 def filter_tests(tests, exclude_tests):
@@ -231,7 +232,7 @@ def filter_tests(tests, exclude_tests):
     # The exclude_tests can be specified using * and ** to specify directory and file patterns.
     excluded_globbed = set()
     for exclude_test_pattern in exclude_tests:
-        excluded_globbed.update(resmokelib.utils.globstar.iglob(exclude_test_pattern))
+        excluded_globbed.update(utils.globstar.iglob(exclude_test_pattern))
 
     return set(tests) - excluded_globbed
 
@@ -243,7 +244,7 @@ def find_tests_by_executor(suites):
     """
 
     memberships = {}
-    test_membership = resmokelib.parser.create_test_membership_map()
+    test_membership = suitesconfig.create_test_membership_map()
     for suite in suites:
         for test in suite.tests:
             memberships[test] = test_membership[test]
@@ -258,7 +259,7 @@ def create_executor_list(suites, exclude_suites):
     """
 
     memberships = collections.defaultdict(list)
-    test_membership = resmokelib.parser.create_test_membership_map()
+    test_membership = suitesconfig.create_test_membership_map()
     for suite in suites:
         for test in suite.tests:
             for executor in set(test_membership[test]) - set(exclude_suites):
@@ -384,7 +385,10 @@ def main():
             if values.test_list_outfile is not None:
                 _write_report_file({}, values.test_list_outfile)
             sys.exit(0)
-        suites = resmokelib.parser.get_suites(values, changed_tests)
+        suites = suitesconfig.get_suites(values.suite_files.split(","),
+                                         changed_tests,
+                                         values.exclude_with_any_tags,
+                                         values.include_with_any_tags)
         tests_by_executor = create_executor_list(suites, exclude_suites)
         tests_by_task = create_task_list(evergreen_conf,
                                          values.buildvariant,

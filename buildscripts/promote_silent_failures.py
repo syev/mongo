@@ -44,7 +44,7 @@ def main():
         parser.error("Requires a single report.json file.")
 
     report_file_json = read_json_file(args[0])
-    test_report = report.TestReport.from_dict(report_file_json)
+    test_report = report.TestReportInfo.from_dict(report_file_json)
 
     # Count number of "silentfail" per test file.
     status_dict = collections.defaultdict(int)
@@ -63,6 +63,7 @@ def main():
             json.dump(result_report, fp)
     else:
         print(json.dumps(result_report))
+
 
 if __name__ == "__main__":
     main()
