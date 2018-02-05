@@ -13,6 +13,7 @@ import threading
 from . import interface
 from ... import config
 from ... import core
+from ... import errors
 from ... import utils
 from ...utils import registry
 
@@ -25,7 +26,6 @@ class _SingleJSTestCase(interface.TestCase):
     REGISTERED_NAME = registry.LEAVE_UNREGISTERED
 
     def __init__(self,
-                 logger,
                  js_filename,
                  shell_executable=None,
                  shell_options=None):
@@ -33,7 +33,7 @@ class _SingleJSTestCase(interface.TestCase):
         Initializes the _SingleJSTestCase with the JS file to run.
         """
 
-        interface.TestCase.__init__(self, logger, "JSTest", js_filename)
+        interface.TestCase.__init__(self, "JSTest", js_filename)
 
         # Command line options override the YAML configuration.
         self.shell_executable = utils.default_if_none(config.MONGO_EXECUTABLE, shell_executable)
@@ -114,22 +114,22 @@ class _SingleJSTestCase(interface.TestCase):
                                                 global_vars.get("MongoRunner.dataDir"))
         data_dir_prefix = utils.default_if_none(data_dir_prefix, config.DEFAULT_DBPATH_PREFIX)
         return os.path.join(data_dir_prefix,
-                            "job%d" % (self.fixture.job_num),
+                            "job%d" % self.fixture.job_num,
                             config.MONGO_RUNNER_SUBDIR)
 
-    def run_test(self):
+    def run_test(self, test_logger):
         try:
-            shell = self._make_process()
-            self._execute(shell)
-        except self.failureException:
+            shell = self._make_process(test_logger)
+            self._execute(test_logger, shell)
+        except errors.TestFailure:
             raise
         except:
-            self.logger.exception("Encountered an error running jstest %s.", self.basename())
+            test_logger.exception("Encountered an error running jstest %s.", self.basename())
             raise
 
-    def _make_process(self):
+    def _make_process(self, test_logger):
         return core.programs.mongo_shell_program(
-            self.logger,
+            test_logger,
             executable=self.shell_executable,
             filename=self.js_filename,
             connection_string=self.fixture.get_driver_connection_url(),
@@ -161,18 +161,16 @@ class JSTestCase(interface.TestCase):
     DEFAULT_CLIENT_NUM = 1
 
     def __init__(self,
-                 logger,
                  js_filename,
                  shell_executable=None,
                  shell_options=None,
-                 test_kind="JSTest"):
-        """
-        Initializes the JSTestCase with the JS file to run.
-        """
+                 test_kind="JSTest",
+                 dynamic=False):
+        """Initializes the JSTestCase with the JS file to run."""
 
-        interface.TestCase.__init__(self, logger, test_kind, js_filename)
+        interface.TestCase.__init__(self, test_kind, js_filename, dynamic)
         self.num_clients = JSTestCase.DEFAULT_CLIENT_NUM
-        self.test_case_template = _SingleJSTestCase(logger, js_filename, shell_executable,
+        self.test_case_template = _SingleJSTestCase(js_filename, shell_executable,
                                                     shell_options)
 
     def configure(self, fixture, num_clients=DEFAULT_CLIENT_NUM, *args, **kwargs):
@@ -181,9 +179,9 @@ class JSTestCase(interface.TestCase):
         self.test_case_template.configure(fixture, *args, **kwargs)
         self.test_case_template.configure_shell()
 
-    def _make_process(self):
+    def _make_process(self, test_logger):
         # This function should only be called by interface.py's as_command().
-        return self.test_case_template._make_process()
+        return self.test_case_template._make_process(test_logger)
 
     def _get_shell_options_for_thread(self, thread_id):
         """
@@ -208,43 +206,42 @@ class JSTestCase(interface.TestCase):
 
         return shell_options
 
-    def _create_test_case_for_thread(self, logger, thread_id):
+    def _create_test_case_for_thread(self, thread_id):
         """
         Create and configure a _SingleJSTestCase to be run in a separate thread.
         """
 
         shell_options = self._get_shell_options_for_thread(thread_id)
-        test_case = _SingleJSTestCase(logger,
-                                      self.test_case_template.js_filename,
+        test_case = _SingleJSTestCase(self.test_case_template.js_filename,
                                       self.test_case_template.shell_executable,
                                       shell_options)
 
         test_case.configure(self.fixture)
         return test_case
 
-    def _run_single_copy(self):
-        test_case = self._create_test_case_for_thread(self.logger, thread_id=0)
+    def _run_single_copy(self, test_logger):
+        test_case = self._create_test_case_for_thread(thread_id=0)
         try:
-            test_case.run_test()
+            test_case.run_test(test_logger)
             # If there was an exception, it will be logged in test_case's run_test function.
         finally:
             self.return_code = test_case.return_code
 
-    def _run_multiple_copies(self):
+    def _run_multiple_copies(self, test_logger):
         threads = []
         test_cases = []
         try:
             # If there are multiple clients, make a new thread for each client.
             for thread_id in xrange(self.num_clients):
-                logger = self.logger.new_test_thread_logger(self.test_kind, str(thread_id))
-                test_case = self._create_test_case_for_thread(logger, thread_id)
+                logger = test_logger.new_test_thread_logger(self.test_kind, str(thread_id))
+                test_case = self._create_test_case_for_thread(thread_id)
                 test_cases.append(test_case)
 
-                thread = self.ThreadWithException(target=test_case.run_test)
+                thread = self.ThreadWithException(target=test_case.run_test, args=(logger,))
                 threads.append(thread)
                 thread.start()
         except:
-            self.logger.exception("Encountered an error starting threads for jstest %s.",
+            test_logger.exception("Encountered an error starting threads for jstest %s.",
                                   self.basename())
             raise
         finally:
@@ -261,15 +258,15 @@ class JSTestCase(interface.TestCase):
 
             for (thread_id, thread) in enumerate(threads):
                 if thread.exc_info is not None:
-                    if not isinstance(thread.exc_info[1], self.failureException):
-                        self.logger.error(
+                    if not isinstance(thread.exc_info[1], errors.TestFailure):
+                        test_logger.error(
                             "Encountered an error inside thread %d running jstest %s.",
                             thread_id, self.basename(),
                             exc_info=thread.exc_info)
                     raise thread.exc_info
 
-    def run_test(self):
+    def run_test(self, test_logger):
         if self.num_clients == 1:
-            self._run_single_copy()
+            self._run_single_copy(test_logger)
         else:
-            self._run_multiple_copies()
+            self._run_multiple_copies(test_logger)

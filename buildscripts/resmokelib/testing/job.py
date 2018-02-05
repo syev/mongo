@@ -77,7 +77,7 @@ class Job(object):
         try:
             if not self.fixture.teardown(finished=True):
                 pass
-        except errors.FixtureError as err:
+        except errors.ServerFailure as err:
             self.logger.warn("Teardown of %s was not successful: %s", self.fixture, err)
             coordinator.set_teardown_error()
         except:
@@ -91,7 +91,7 @@ class Job(object):
         """
 
         for hook in self.hooks:
-            hook.before_suite(test_report)
+            hook.before_suite(test_report, self.logger)
 
         while not coordinator.interrupted:
             test = queue.get_nowait()
@@ -104,7 +104,7 @@ class Job(object):
                 queue.task_done()
 
         for hook in self.hooks:
-            hook.after_suite(test_report)
+            hook.after_suite(test_report, self.logger)
 
     def _execute_test(self, test, test_report):
         """
@@ -114,18 +114,18 @@ class Job(object):
         test.configure(self.fixture, config.NUM_CLIENTS_PER_FIXTURE)
         self._run_hooks_before_tests(test, test_report)
 
-        test(test_report)
-        if self.suite_options.fail_fast and not test_report.wasSuccessful():
-            self.logger.info("%s failed, so stopping..." % (test.shortDescription()))
-            raise errors.StopExecution("%s failed" % (test.shortDescription()))
+        test.run(self.logger, test_report)
+        if self.suite_options.fail_fast and not test_report.was_successful():
+            self.logger.info("%s failed, so stopping..." % (test.short_description()))
+            raise errors.StopExecution("%s failed" % (test.short_description()))
 
         if not self.fixture.is_running():
             self.logger.error("%s marked as a failure because the fixture crashed during the test.",
-                              test.shortDescription())
-            test_report.setFailure(test, return_code=2)
+                              test.short_description())
+            test_report.update_fail_test(test.id(), return_code=2)
             # Always fail fast if the fixture fails.
             raise errors.StopExecution("%s not running after %s" %
-                                       (self.fixture, test.shortDescription()))
+                                       (self.fixture, test.short_description()))
 
         self._run_hooks_after_tests(test, test_report)
 
@@ -139,29 +139,27 @@ class Job(object):
 
         try:
             for hook in self.hooks:
-                hook.before_test(test, test_report)
+                hook.before_test(test, test_report, self.logger)
 
         except errors.StopExecution:
             raise
 
         except errors.ServerFailure:
             self.logger.exception("%s marked as a failure by a hook's before_test.",
-                                  test.shortDescription())
-            self._fail_test(test, test_report, sys.exc_info(), return_code=2)
+                                  test.short_description())
+            test_report.start_fail_stop(test.id(), return_code=2)
             raise errors.StopExecution("A hook's before_test failed")
 
         except errors.TestFailure:
             self.logger.exception("%s marked as a failure by a hook's before_test.",
-                                  test.shortDescription())
-            self._fail_test(test, test_report, sys.exc_info(), return_code=1)
+                                  test.short_description())
+            test_report.start_fail_stop(test.id(), return_code=1)
             if self.suite_options.fail_fast:
                 raise errors.StopExecution("A hook's before_test failed")
 
         except:
-            # Record the before_test() error in 'self.report'.
-            test_report.startTest(test)
-            test_report.addError(test, sys.exc_info())
-            test_report.stopTest(test)
+            # Record the test as errored in the report.
+            test_report.start_error_stop(test, sys.exc_info())
             raise
 
     def _run_hooks_after_tests(self, test, test_report):
@@ -173,42 +171,27 @@ class Job(object):
         """
         try:
             for hook in self.hooks:
-                hook.after_test(test, test_report)
+                hook.after_test(test, test_report, self.logger)
 
         except errors.StopExecution:
             raise
 
         except errors.ServerFailure:
             self.logger.exception("%s marked as a failure by a hook's after_test.",
-                                  test.shortDescription())
-            test_report.setFailure(test, return_code=2)
+                                  test.short_description())
+            test_report.update_fail_test(test.id(), return_code=2)
             raise errors.StopExecution("A hook's after_test failed")
 
         except errors.TestFailure:
             self.logger.exception("%s marked as a failure by a hook's after_test.",
-                                  test.shortDescription())
-            test_report.setFailure(test, return_code=1)
+                                  test.short_description())
+            test_report.update_fail_test(test.id(), return_code=1)
             if self.suite_options.fail_fast:
                 raise errors.StopExecution("A hook's after_test failed")
 
         except:
-            test_report.setError(test)
+            test_report.update_error_test(test.id())
             raise
-
-    @staticmethod
-    def _fail_test(test, test_report, exc_info, return_code=1):
-        """
-        Helper to record a test as a failure with the provided return
-        code.
-
-        This method should not be used if 'test' has already been
-        started, instead use TestReport.setFailure().
-        """
-
-        test_report.startTest(test)
-        test.return_code = return_code
-        test_report.addFailure(test, exc_info)
-        test_report.stopTest(test)
 
     @staticmethod
     def _drain_queue(queue):

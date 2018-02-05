@@ -109,21 +109,26 @@ class Resmoke(object):
             return ["(no tests)"]
 
     def run_tests(self):
-        # Move to _get_suites?
-        suites = self._get_suites()
+        try:
+            suites = self._get_suites()
 
-        for suite, suite_report in suites:
-            self._report.add_suite(suite_report)
-        self._setup_signal_handler()
+            for suite, suite_report in suites:
+                self._report.add_suite(suite_report)
+            self._setup_signal_handler()
 
-        for suite, suite_report in suites:
-            self.run_suite(suite, suite_report)
+            for suite, suite_report in suites:
+                self.run_suite(suite, suite_report)
 
-        self._report.record_end()
-        # Log the resmoke run summary.
-        self._log_resmoke_summary()
-        # self._resmoke_logger.info("=" * 80)
-        # self._resmoke_logger.info(self._report.get_summary())
+            self._report.record_end()
+            self._log_resmoke_summary()
+
+            # Exit with a nonzero code if any of the suites failed.
+            exit_code = max(report.return_code for _, report in suites)
+            self.exit(exit_code)
+        finally:
+            # TODO do we want to skip if interrupted?
+            resmokelib.logging.flush.stop_thread()
+            resmokelib.reportfile.write_evergreen_report(self._report)
 
     def run_suite(self, suite, suite_report):
         self._log_suite_config(suite)

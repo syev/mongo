@@ -11,14 +11,17 @@ import bson
 import pymongo
 import pymongo.errors
 
+from . import interface
 from . import cleanup
-from . import jsfile
 from ..fixtures import replicaset
+from ..testcases import jstest
 from ... import errors
-from ... import utils
 
 
-class BackgroundInitialSync(jsfile.JsCustomBehavior):
+DEFAULT_N = cleanup.CleanEveryN.DEFAULT_N
+
+
+class BackgroundInitialSync(interface.TestCaseHook):
     """
     After every test, this hook checks if a background node has finished initial sync and if so,
     validates it, tears it down, and restarts it.
@@ -33,49 +36,53 @@ class BackgroundInitialSync(jsfile.JsCustomBehavior):
     value for CleanEveryN.
     """
 
-    DEFAULT_N = cleanup.CleanEveryN.DEFAULT_N
-
     def __init__(self, hook_logger, fixture, use_resync=False, n=DEFAULT_N, shell_options=None):
         if not isinstance(fixture, replicaset.ReplicaSetFixture):
             raise ValueError("`fixture` must be an instance of ReplicaSetFixture, not {}".format(
                 fixture.__class__.__name__))
 
         description = "Background Initial Sync"
-        js_filename = os.path.join("jstests", "hooks", "run_initial_sync_node_validation.js")
-        jsfile.JsCustomBehavior.__init__(self, hook_logger, fixture, js_filename,
-                                         description, shell_options)
+        test_case = BackgroundInitialSyncTestCase(shell_options, fixture, use_resync, n)
+        interface.TestCaseHook.__init__(self, hook_logger, fixture, description, test_case)
 
+    def after_test(self, test, test_report, job_logger):
+        self.hook_test_case.set_test(test)
+        interface.TestCaseHook.after_test(self, test, test_report, job_logger)
+
+
+class BackgroundInitialSyncTestCase(jstest.JSTestCase):
+    def __init__(self, shell_options, fixture, use_resync=False, n=DEFAULT_N):
+        js_filename = os.path.join("jstests", "hooks", "run_initial_sync_node_validation.js")
+        jstest.JSTestCase.__init__(self, js_filename, shell_options=shell_options, test_kind="Hook",
+                                   dynamic=True)
+        self.fixture = fixture
         self.use_resync = use_resync
         self.n = n
         self.tests_run = 0
         self.random_restarts = 0
 
-    # Restarts initial sync by shutting down the node, clearing its data, and restarting it,
-    # or by calling resync if use_resync is specified.
-    def __restart_init_sync(self, test_report, sync_node, sync_node_conn):
-        if self.use_resync:
-            self.hook_test_case.logger.info("Calling resync on initial sync node...")
-            cmd = bson.SON([("resync", 1), ("wait", 0)])
-            sync_node_conn.admin.command(cmd)
-        else:
-            # Tear down and restart the initial sync node to start initial sync again.
-            sync_node.teardown()
+        self.hook_description = "Background Initial Sync"
+        self.base_test = None
+        self.description = None
 
-            self.hook_test_case.logger.info("Starting the initial sync node back up again...")
-            sync_node.setup()
-            sync_node.await_ready()
+    def set_test(self, test):
+        self.reset()
+        self.base_test = test
+        test_name = "{}:{}".format(test.short_name(), BackgroundInitialSync.__name__)
+        self.test_name = test_name
+        self.description = "{0} after running '{1}'".format(
+            self.hook_description, test.short_name())
 
-    def _after_test_impl(self, test, test_report, description):
+    def run_test(self, test_logger):
         self.tests_run += 1
         sync_node = self.fixture.get_initial_sync_node()
         sync_node_conn = sync_node.mongo_client()
 
         # If it's been 'n' tests so far, wait for the initial sync node to finish syncing.
         if self.tests_run >= self.n:
-            self.hook_test_case.logger.info(
-                "%d tests have been run against the fixture, waiting for initial sync"
-                " node to go into SECONDARY state",
-                self.tests_run)
+            test_logger.info("%d tests have been run against the fixture, waiting for initial sync"
+                             " node to go into SECONDARY state",
+                             self.tests_run)
             self.tests_run = 0
 
             cmd = bson.SON([("replSetTest", 1),
@@ -91,41 +98,56 @@ class BackgroundInitialSync(jsfile.JsCustomBehavior):
             if state != 2:
                 if self.tests_run == 0:
                     msg = "Initial sync node did not catch up after waiting 20 minutes"
-                    self.hook_test_case.logger.exception("{0} failed: {1}".format(description, msg))
+                    test_logger.exception("{0} failed: {1}".format(self.description, msg))
                     raise errors.TestFailure(msg)
 
-                self.hook_test_case.logger.info(
+                test_logger.info(
                     "Initial sync node is in state %d, not state SECONDARY (2)."
                     " Skipping BackgroundInitialSync hook for %s",
                     state,
-                    test.short_name())
+                    self.base_test.short_name())
 
                 # If we have not restarted initial sync since the last time we ran the data
                 # validation, restart initial sync with a 20% probability.
                 if self.random_restarts < 1 and random.random() < 0.2:
                     hook_type = "resync" if self.use_resync else "initial sync"
-                    self.hook_test_case.logger.info("randomly restarting " + hook_type +
-                                                    " in the middle of " + hook_type)
-                    self.__restart_init_sync(test_report, sync_node, sync_node_conn)
+                    test_logger.info("randomly restarting " + hook_type +
+                                     " in the middle of " + hook_type)
+                    self.__restart_init_sync(sync_node, sync_node_conn, test_logger)
                     self.random_restarts += 1
                 return
         except pymongo.errors.OperationFailure:
             # replSetGetStatus can fail if the node is in STARTUP state. The node will soon go into
             # STARTUP2 state and replSetGetStatus will succeed after the next test.
-            self.hook_test_case.logger.info(
+            test_logger.info(
                 "replSetGetStatus call failed in BackgroundInitialSync hook, skipping hook for %s",
-                test.short_name())
+                self.base_test.short_name())
             return
 
         self.random_restarts = 0
 
         # Run data validation and dbhash checking.
-        self.hook_test_case.run_test()
+        jstest.JSTestCase.run_test(self, test_logger)
 
-        self.__restart_init_sync(test_report, sync_node, sync_node_conn)
+        self.__restart_init_sync(sync_node, sync_node_conn, test_logger)
+
+    # Restarts initial sync by shutting down the node, clearing its data, and restarting it,
+    # or by calling resync if use_resync is specified.
+    def __restart_init_sync(self, sync_node, sync_node_conn, test_logger):
+        if self.use_resync:
+            test_logger.info("Calling resync on initial sync node...")
+            cmd = bson.SON([("resync", 1), ("wait", 0)])
+            sync_node_conn.admin.command(cmd)
+        else:
+            # Tear down and restart the initial sync node to start initial sync again.
+            sync_node.teardown()
+
+            test_logger.info("Starting the initial sync node back up again...")
+            sync_node.setup()
+            sync_node.await_ready()
 
 
-class IntermediateInitialSync(jsfile.JsCustomBehavior):
+class IntermediateInitialSync(interface.TestCaseHook):
     """
     This hook accepts a parameter 'n' that specifies a number of tests after which it will start up
     a node to initial sync, wait for replication to finish, and then validate the data. It also
@@ -135,22 +157,46 @@ class IntermediateInitialSync(jsfile.JsCustomBehavior):
     This requires the ReplicaSetFixture to be started with 'start_initial_sync_node=True'.
     """
 
-    DEFAULT_N = cleanup.CleanEveryN.DEFAULT_N
-
     def __init__(self, hook_logger, fixture, use_resync=False, n=DEFAULT_N):
         if not isinstance(fixture, replicaset.ReplicaSetFixture):
             raise ValueError("`fixture` must be an instance of ReplicaSetFixture, not {}".format(
                 fixture.__class__.__name__))
 
         description = "Intermediate Initial Sync"
-        js_filename = os.path.join("jstests", "hooks", "run_initial_sync_node_validation.js")
-        jsfile.JsCustomBehavior.__init__(self, hook_logger, fixture, js_filename, description)
+        test_case = IntermediateInitialSyncTestCase(fixture, use_resync, n)
+        interface.TestCaseHook.__init__(self, hook_logger, fixture, description, test_case)
 
+    def _should_run_after_test(self):
+        return self.hook_test_case.should_run_after_test()
+
+    def after_test(self, test, test_report, job_logger):
+        self.hook_test_case.set_test(test)
+        interface.TestCaseHook.after_test(self, test, test_report, job_logger)
+
+
+class IntermediateInitialSyncTestCase(jstest.JSTestCase):
+    def __init__(self, fixture, use_resync=False, n=DEFAULT_N):
+        js_filename = os.path.join("jstests", "hooks", "run_initial_sync_node_validation.js")
+        jstest.JSTestCase.__init__(self, js_filename, test_kind="Hook", dynamic=True)
+
+        self.fixture = fixture
         self.use_resync = use_resync
         self.n = n
         self.tests_run = 0
 
-    def _should_run_after_test_impl(self):
+        self.hook_description = "Intermediate Initial Sync"
+        self.base_test = None
+        self.description = None
+
+    def set_test(self, test):
+        self.reset()
+        self.base_test = test
+        test_name = "{}:{}".format(test.short_name(), BackgroundInitialSync.__name__)
+        self.test_name = test_name
+        self.description = "{0} after running '{1}'".format(
+            self.hook_description, test.short_name())
+
+    def should_run_after_test(self):
         self.tests_run += 1
 
         # If we have not run 'n' tests yet, skip this hook.
@@ -160,27 +206,27 @@ class IntermediateInitialSync(jsfile.JsCustomBehavior):
         self.tests_run = 0
         return True
 
-    def _after_test_impl(self, test, test_report, description):
+    def run_test(self, test_logger):
         sync_node = self.fixture.get_initial_sync_node()
         sync_node_conn = sync_node.mongo_client()
 
         if self.use_resync:
-            self.hook_test_case.logger.info("Calling resync on initial sync node...")
+            test_logger.info("Calling resync on initial sync node...")
             cmd = bson.SON([("resync", 1)])
             sync_node_conn.admin.command(cmd)
         else:
             sync_node.teardown()
 
-            self.hook_test_case.logger.info("Starting the initial sync node back up again...")
+            test_logger.info("Starting the initial sync node back up again...")
             sync_node.setup()
             sync_node.await_ready()
 
         # Do initial sync round.
-        self.hook_test_case.logger.info("Waiting for initial sync node to go into SECONDARY state")
+        test_logger.info("Waiting for initial sync node to go into SECONDARY state")
         cmd = bson.SON([("replSetTest", 1),
                         ("waitForMemberState", 2),
                         ("timeoutMillis", 20 * 60 * 1000)])
         sync_node_conn.admin.command(cmd)
 
         # Run data validation and dbhash checking.
-        self.hook_test_case.run_test()
+        jstest.JSTestCase.run_test(self, test_logger)

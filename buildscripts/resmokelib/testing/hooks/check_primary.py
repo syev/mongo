@@ -8,7 +8,7 @@ from . import interface
 from ..fixtures import replicaset
 from ... import errors
 
-import pymongo
+import pymongo.errors
 
 
 class CheckPrimary(interface.CustomBehavior):
@@ -20,6 +20,7 @@ class CheckPrimary(interface.CustomBehavior):
             raise TypeError("{} is not a replica set".format(rs_fixture.__class__.__name__))
 
         self._rs_fixture = rs_fixture
+        self._primary_url = None
 
     def _get_primary_url(self):
         no_primary_err = errors.ServerFailure("No primary found")
@@ -34,7 +35,6 @@ class CheckPrimary(interface.CustomBehavior):
                 return node.get_driver_connection_url()
 
         raise no_primary_err
-
 
     def before_test(self, test, test_report):
         self._primary_url = self._get_primary_url()

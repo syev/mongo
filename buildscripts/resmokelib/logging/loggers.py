@@ -145,9 +145,9 @@ class ExecutorRootLogger(RootLogger):
         """Create a new child JobLogger."""
         return JobLogger(test_kind, job_num, self, self.fixture_root_logger)
 
-    def new_testqueue_logger(self, test_kind):
-        """Create a new TestQueueLogger that will be a child of the "tests" root logger."""
-        return TestQueueLogger(test_kind, self.tests_root_logger)
+    # def new_testqueue_logger(self, test_kind):
+    #     """Create a new TestQueueLogger that will be a child of the "tests" root logger."""
+    #     return TestQueueLogger(test_kind, self.tests_root_logger)
 
     def new_hook_logger(self, behavior_class, fixture_logger):
         """Create a new child hook logger."""
@@ -182,18 +182,19 @@ class JobLogger(BaseLogger):
         """Create a new fixture logger that will be a child of the "fixture" root logger."""
         return FixtureLogger(fixture_class, self.job_num, self.build_id, self.fixture_root_logger)
 
-    def new_test_logger(self, test_shortname, test_basename, command, parent):
-        """Create a new test logger that will be a child of the given parent."""
+    def new_test_logger(self, test_shortname, test_basename, command):
+        """Create a new test logger that will be a child of the tests root logger."""
+        tests_root_logger = EXECUTOR_LOGGER.tests_root_logger
         if self.build_id:
             test_id = self.build_logger_server.new_test_id(self.build_id, test_basename, command)
             if test_id:
                 url = self.build_logger_server.get_test_log_url(self.build_id, test_id)
                 self.info("Writing output of %s to %s.", test_shortname, url)
-                return TestLogger(test_shortname, parent, self.build_id, test_id, url)
+                return TestLogger(test_shortname, tests_root_logger, self.build_id, test_id, url)
             else:
                 self.info("Encountered an error configuring buildlogger for test %s, falling"
                           " back to stderr.", test_shortname)
-        return TestLogger(test_shortname, parent)
+        return TestLogger(test_shortname, tests_root_logger)
 
 
 class TestLogger(BaseLogger):
@@ -304,14 +305,14 @@ class TestsRootLogger(RootLogger):
         RootLogger.__init__(self, TESTS_LOGGER_NAME, logging_config, build_logger_server)
 
 
-class TestQueueLogger(BaseLogger):
-    def __init__(self, test_kind, tests_root_logger):
-        """Initialize a TestQueueLogger.
-
-        :param test_kind: the test kind (e.g. js_test, db_test, cpp_unit_test, etc.).
-        :param tests_root_logger: the root logger for the tests logs.
-        """
-        BaseLogger.__init__(self, test_kind, parent=tests_root_logger)
+# class TestQueueLogger(BaseLogger):
+#     def __init__(self, test_kind, tests_root_logger):
+#         """Initialize a TestQueueLogger.
+#
+#         :param test_kind: the test kind (e.g. js_test, db_test, cpp_unit_test, etc.).
+#         :param tests_root_logger: the root logger for the tests logs.
+#         """
+#         BaseLogger.__init__(self, test_kind, parent=tests_root_logger)
 
 
 class HookLogger(BaseLogger):

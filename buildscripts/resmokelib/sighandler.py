@@ -9,7 +9,6 @@ import os
 import signal
 import sys
 import threading
-import time
 import traceback
 
 _is_windows = (sys.platform == "win32")
@@ -18,10 +17,8 @@ if _is_windows:
     import win32event
 
 from . import reportfile
-from . import testing
 
 
-# def register(logger, suites, start_time):
 def register(logger, resmoke_report):
     """
     On Windows, set up an event object to wait for signal, otherwise, register a signal handler
@@ -63,13 +60,9 @@ def register(logger, resmoke_report):
         Dumps the stacks of all threads, writes the report file, and logs the suite summaries.
         """
         _dump_stacks(logger, header_msg)
-        reportfile.write(resmoke_report)
+        reportfile.write_evergreen_report(resmoke_report)
 
-        summary = resmoke_report.get_summary()
-        logger.info(summary)
-        # TODO check summary is the same
-        # testing.suite.Suite.log_summaries(logger, suites, time.time() - start_time)
-
+        logger.info(resmoke_report.get_summary())
 
     # On Windows spawn a thread to wait on an event object for signal to dump stacks. For Cygwin
     # platforms, we use a signal handler since it supports POSIX signals.

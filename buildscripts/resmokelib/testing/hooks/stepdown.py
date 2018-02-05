@@ -5,7 +5,6 @@ from __future__ import absolute_import
 
 import collections
 import random
-import sys
 import time
 import threading
 
@@ -53,7 +52,7 @@ class ContinuousStepdown(interface.CustomBehavior):
         self._rs_fixtures = []
         self._stepdown_thread = None
 
-    def before_suite(self, test_report):
+    def before_suite(self, test_report, job_logger):
         if not self._rs_fixtures:
             self._add_fixture(self._fixture)
         self._stepdown_thread = _StepdownThread(self.logger, self._rs_fixtures,
@@ -62,30 +61,26 @@ class ContinuousStepdown(interface.CustomBehavior):
         self.logger.info("Starting the stepdown thread.")
         self._stepdown_thread.start()
 
-    def after_suite(self, test_report):
+    def after_suite(self, test_report, job_logger):
         self.logger.info("Stopping the stepdown thread.")
         self._stepdown_thread.stop()
 
-    def before_test(self, test, test_report):
-        self._check_thread(test, test_report)
+    def before_test(self, test, test_report, job_logger):
+        self._check_thread()
         self.logger.info("Resuming the stepdown thread.")
         self._stepdown_thread.resume()
 
-    def after_test(self, test, test_report):
-        self._check_thread(test, test_report)
+    def after_test(self, test, test_report, job_logger):
+        self._check_thread()
         self.logger.info("Pausing the stepdown thread.")
         self._stepdown_thread.pause()
         self.logger.info("Paused the stepdown thread.")
 
-    def _check_thread(self, test, test_report):
+    def _check_thread(self):
         if not self._stepdown_thread.is_alive():
             msg = "The stepdown thread is not running."
             self.logger.error(msg)
-            try:
-                raise errors.StopExecution(msg)
-            except errors.StopExecution:
-                test_report.addError(test, sys.exc_info())
-                raise
+            raise errors.ServerFailure(msg)
 
     def _add_fixture(self, fixture):
         if isinstance(fixture, replicaset.ReplicaSetFixture):

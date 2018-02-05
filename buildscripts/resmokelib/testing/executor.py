@@ -128,12 +128,12 @@ class TestSuiteExecutor(object):
         that the test cases can be dispatched to multiple threads.
         """
 
-        test_queue_logger = self.logger.new_testqueue_logger(self._suite.test_kind)
+        # test_queue_logger = self.logger.new_testqueue_logger(self._suite.test_kind)
         # Put all the test cases in a queue.
         queue = _queue.Queue()
         for test_name in self._suite.tests:
             test_case = testcases.make_test_case(self._suite.test_kind,
-                                                 test_queue_logger,
+                                                 # test_queue_logger,
                                                  test_name,
                                                  **self._test_config)
             queue.put(test_case)

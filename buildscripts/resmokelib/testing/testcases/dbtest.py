@@ -11,6 +11,7 @@ import shutil
 from . import interface
 from ... import config
 from ... import core
+from ... import errors
 from ... import utils
 
 
@@ -22,7 +23,6 @@ class DBTestCase(interface.TestCase):
     REGISTERED_NAME = "db_test"
 
     def __init__(self,
-                 logger,
                  dbtest_suite,
                  dbtest_executable=None,
                  dbtest_options=None):
@@ -30,7 +30,7 @@ class DBTestCase(interface.TestCase):
         Initializes the DBTestCase with the dbtest suite to run.
         """
 
-        interface.TestCase.__init__(self, logger, "DBTest", dbtest_suite)
+        interface.TestCase.__init__(self, "DBTest", dbtest_suite)
 
         # Command line options override the YAML configuration.
         self.dbtest_executable = utils.default_if_none(config.DBTEST_EXECUTABLE, dbtest_executable)
@@ -43,7 +43,7 @@ class DBTestCase(interface.TestCase):
 
         # If a dbpath was specified, then use it as a container for all other dbpaths.
         dbpath_prefix = self.dbtest_options.pop("dbpath", DBTestCase._get_dbpath_prefix())
-        dbpath = os.path.join(dbpath_prefix, "job%d" % (self.fixture.job_num), "unittest")
+        dbpath = os.path.join(dbpath_prefix, "job%d" % self.fixture.job_num, "unittest")
         self.dbtest_options["dbpath"] = dbpath
 
         self._clear_dbpath()
@@ -54,22 +54,26 @@ class DBTestCase(interface.TestCase):
             # Directory already exists.
             pass
 
-    def run_test(self):
+    def run_test(self, test_logger):
         try:
             dbtest = self._make_process()
             self._execute(dbtest)
             self._clear_dbpath()
         except self.failureException:
+            dbtest = self._make_process(test_logger)
+            self._execute(test_logger, dbtest)
+            self._clear_dbpath()
+        except errors.TestFailure:
             raise
         except:
-            self.logger.exception("Encountered an error running dbtest suite %s.", self.basename())
+            test_logger.exception("Encountered an error running dbtest suite %s.", self.basename())
             raise
 
     def _clear_dbpath(self):
         shutil.rmtree(self.dbtest_options["dbpath"], ignore_errors=True)
 
-    def _make_process(self):
-        return core.programs.dbtest_program(self.logger,
+    def _make_process(self, test_logger):
+        return core.programs.dbtest_program(test_logger,
                                             executable=self.dbtest_executable,
                                             suites=[self.dbtest_suite],
                                             **self.dbtest_options)

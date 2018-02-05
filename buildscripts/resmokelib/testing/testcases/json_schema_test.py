@@ -7,6 +7,7 @@ from __future__ import absolute_import
 from . import interface
 from ... import config
 from ... import core
+from ... import errors
 from ... import utils
 
 
@@ -19,13 +20,12 @@ class JSONSchemaTestCase(interface.TestCase):
     TEST_RUNNER_FILE = "jstests/libs/json_schema_test_runner.js"
 
     def __init__(self,
-                 logger,
                  json_filename,
                  shell_executable=None,
                  shell_options=None):
         """Initializes the JSONSchemaTestCase with the JSON test file."""
 
-        interface.TestCase.__init__(self, logger, "JSON Schema Test", json_filename)
+        interface.TestCase.__init__(self, "JSON Schema Test", json_filename)
 
         # Command line options override the YAML configuration.
         self.shell_executable = utils.default_if_none(config.MONGO_EXECUTABLE, shell_executable)
@@ -44,20 +44,20 @@ class JSONSchemaTestCase(interface.TestCase):
         global_vars["TestData"] = test_data
         self.shell_options["global_vars"] = global_vars
 
-    def run_test(self):
+    def run_test(self, test_logger):
         try:
-            shell = self._make_process()
-            self._execute(shell)
-        except self.failureException:
+            shell = self._make_process(test_logger)
+            self._execute(test_logger, shell)
+        except errors.TestFailure:
             raise
         except:
-            self.logger.exception("Encountered an error running JSON Schema test %s.",
+            test_logger.exception("Encountered an error running JSON Schema test %s.",
                                   self.basename())
             raise
 
-    def _make_process(self):
+    def _make_process(self, test_logger):
         return core.programs.mongo_shell_program(
-            self.logger,
+            test_logger,
             executable=self.shell_executable,
             connection_string=self.fixture.get_driver_connection_url(),
             filename=JSONSchemaTestCase.TEST_RUNNER_FILE,
