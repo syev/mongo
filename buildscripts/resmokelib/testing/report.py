@@ -135,6 +135,8 @@ class SuiteReport(object):
         return start_times, end_times, executions
 
     def _get_summary(self):
+        end_time = self.suite_end or time.time()
+        time_taken = end_time - self.suite_start
         start_times, end_times, executions = self._get_all_executions()
         nb_executions = len(executions)
 
@@ -142,10 +144,11 @@ class SuiteReport(object):
             return "No tests ran", None
         elif nb_executions == 1:
             report = executions[0]
-            time_taken = end_times[0] - start_times[0]
+            # time_taken = end_times[0] - start_times[0]
             return self._get_single_execution_summary(report, time_taken)
         else:
-            return self._get_multi_executions_summary(executions, start_times, end_times)
+            return self._get_multi_executions_summary(executions, start_times, end_times,
+                                                      time_taken)
 
     def _get_single_execution_summary(self, report, time_taken):
         if report.was_successful():
@@ -154,8 +157,8 @@ class SuiteReport(object):
             header = "Failures or errors occured."
         return header, "\n".join(self._get_report_summary(report, time_taken))
 
-    def _get_multi_executions_summary(self, reports, start_times, end_times):
-        time_taken = end_times[-1] - start_times[0]
+    def _get_multi_executions_summary(self, reports, start_times, end_times, time_taken):
+        # time_taken = end_times[-1] - start_times[0]
         header = "Executed {:d} times in {:0.2f} seconds.".format(len(reports), time_taken)
         combined_report = TestReportInfo.combine(reports)
         sb = self._get_report_summary(combined_report, time_taken, details=False)
