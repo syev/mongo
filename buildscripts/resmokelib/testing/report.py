@@ -42,7 +42,8 @@ class ResmokeReport(object):
 
     def get_summary(self):
         """Returns a string summary of the resmoke execution that can be logged."""
-        time_taken = self.end_time - self.start_time
+        end_time = self.end_time or time.time()
+        time_taken = end_time - self.start_time
         sb = ["Summary of all suites: {:d} suites ran in {:0.2f} seconds".format(
             len(self.suite_reports), time_taken)]
         for suite_report in self.suite_reports:
@@ -258,7 +259,7 @@ class TestReportInfo(object):
     def clone(self):
         """Clones this report."""
         clone = TestReportInfo()
-        clone.test_infos = copy.copy(self.test_infos)
+        clone.test_infos = [test_info.clone() for test_info in self.test_infos]
         clone.num_dynamic = self.num_dynamic
         clone.num_succeeded = self.num_succeeded
         clone.num_failed = self.num_failed
@@ -296,6 +297,7 @@ class TestReportInfo(object):
         combined_info = cls()
         combining_time = time.time()
         for info in report_infos:
+            info = info.clone()
             info.end_report(combining_time)
             combined_info.test_infos.extend(info.test_infos)
             combined_info.num_dynamic += info.num_dynamic
@@ -566,3 +568,13 @@ class _TestInfo(object):
         self.evergreen_status = None
         self.return_code = None
         self.url_endpoint = None
+
+    def clone(self):
+        clone = _TestInfo(self.test_id, self.dynamic)
+        clone.start_time = self.start_time
+        clone.end_time = self.end_time
+        clone.status = self.status
+        clone.evergreen_status = self.evergreen_status
+        clone.return_code = self.return_code
+        clone.url_endpoint = self.url_endpoint
+        return clone
