@@ -1,6 +1,4 @@
-"""
-unittest.TestCase for C++ integration tests.
-"""
+"""TestCase for C++ integration tests."""
 
 from __future__ import absolute_import
 

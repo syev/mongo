@@ -10,30 +10,24 @@ from ...utils import registry
 _HOOKS = {}
 
 
-def make_custom_behavior(class_name, *args, **kwargs):
-    """
-    Factory function for creating CustomBehavior instances.
-    """
+def make_hook(class_name, *args, **kwargs):
+    """Factory function for creating Hook instances."""
 
     if class_name not in _HOOKS:
-        raise ValueError("Unknown custom behavior class '%s'" % class_name)
+        raise ValueError("Unknown hook class '%s'" % class_name)
 
     return _HOOKS[class_name](*args, **kwargs)
 
 
-class CustomBehavior(object):
-    """
-    The common interface all CustomBehaviors will inherit from.
-    """
+class Hook(object):
+    """The common interface all Hooks will inherit from."""
 
     __metaclass__ = registry.make_registry_metaclass(_HOOKS)
 
     REGISTERED_NAME = registry.LEAVE_UNREGISTERED
 
     def __init__(self, hook_logger, fixture, description):
-        """
-        Initializes the CustomBehavior with the specified fixture.
-        """
+        """Initializes the Hook with the specified fixture."""
 
         if not isinstance(hook_logger, loggers.HookLogger):
             raise TypeError("logger must be a HookLogger instance")
@@ -43,10 +37,7 @@ class CustomBehavior(object):
         self.description = description
 
     def before_suite(self, test_report, job_logger):
-        """
-        The test runner calls this exactly once before they start
-        running the suite.
-        """
+        """The test runner calls this exactly once before they start running the suite."""
         pass
 
     def after_suite(self, test_report, job_logger):
@@ -58,23 +49,19 @@ class CustomBehavior(object):
         pass
 
     def before_test(self, test, test_report, job_logger):
-        """
-        Each test will call this before it executes.
-        """
+        """Each test will call this before it executes."""
         pass
 
     def after_test(self, test, test_report, job_logger):
-        """
-        Each test will call this after it executes.
-        """
+        """Each test will call this after it executes."""
         pass
 
 
-class TestCaseHook(CustomBehavior):
+class TestCaseHook(Hook):
     REGISTERED_NAME = registry.LEAVE_UNREGISTERED
 
     def __init__(self, hook_logger, fixture, description):
-        CustomBehavior.__init__(self, hook_logger, fixture, description)
+        Hook.__init__(self, hook_logger, fixture, description)
 
     def _should_run_after_test(self):
         return True
@@ -84,14 +71,9 @@ class TestCaseHook(CustomBehavior):
             return
         hook_test_case = self._create_test_case(test)
         hook_test_case.configure(self.fixture)
-        # self.hook_test_case.reset()
-        # Change test_name and description to be more descriptive.
-        # description = "{0} after running '{1}'".format(self.description, test.short_name())
-        # test_name = "{}:{}".format(test.short_name(), self.__class__.__name__)
-        # self.hook_test_case.test_name = test_name
         hook_test_case.run(job_logger, test_report)
         if hook_test_case.return_code != 0:
-            raise errors.StopExecution("TODO")
+            raise errors.StopExecution(str(hook_test_case.exception))
 
     def _create_test_case(self, test):
         test_name = "{}:{}".format(test.short_name(), self.__class__.__name__)
@@ -100,12 +82,3 @@ class TestCaseHook(CustomBehavior):
 
     def _create_test_case_impl(self, test_name, description, base_test_name):
         raise NotImplementedError()
-
-# class HookTestCase(object):
-#     def __init__(self, hook_name):
-#         self.hook_name
-#         self.base_test = None
-#
-#     def set_test(self, test):
-#         self.reset()
-#         test_name = "{}:{}".format(test.short_name(), self.hook_name)

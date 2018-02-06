@@ -11,10 +11,10 @@ from ... import errors
 import pymongo.errors
 
 
-class CheckPrimary(interface.CustomBehavior):
+class CheckPrimary(interface.Hook):
     def __init__(self, hook_logger, rs_fixture):
         description = "Verify that the primary has not stepped down or changed"
-        interface.CustomBehavior.__init__(self, hook_logger, rs_fixture, description)
+        interface.Hook.__init__(self, hook_logger, rs_fixture, description)
 
         if not isinstance(rs_fixture, replicaset.ReplicaSetFixture):
             raise TypeError("{} is not a replica set".format(rs_fixture.__class__.__name__))

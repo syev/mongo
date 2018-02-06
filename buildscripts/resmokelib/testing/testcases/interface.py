@@ -1,6 +1,5 @@
 """
-Subclass of unittest.TestCase with helpers for spawning a separate
-process to perform the actual test case.
+Subclass of TestCase with helpers for spawning a separate process to perform the actual test case.
 """
 
 from __future__ import absolute_import
@@ -80,14 +79,11 @@ class TestCase(object):
     def run(self, job_logger, test_report):
         test_logger = None
         try:
-            job_logger.info("XXXXXXXXXXXXXXXXXXXXXXXXXXXX")
             if self.dynamic:
-                job_logger.info("dynamic")
                 command = "(dynamic test case)"
                 job_logger.info("Running %s... (dynamic test case)", self.basename())
             else:
-                job_logger.info("not dynamic")
-                command = self.as_command(None)  # FIXME
+                command = self._as_command(None)
                 job_logger.info("Running %s...\n%s", self.basename(), command)
             test_logger = job_logger.new_test_logger(self.short_name(), self.basename(),
                                                      command)
@@ -103,7 +99,6 @@ class TestCase(object):
             # Should not happen as tests are not run in the main thread
             raise
         except:
-            job_logger.exception("AAAAAAAAAAAAAAAAA")
             # test_report.add_error(self.id(), sys.exc_info())
             test_report.error_test(self.id(), self.return_code)
             self.exception = sys.exc_info()
@@ -126,7 +121,7 @@ class TestCase(object):
         """
         raise NotImplementedError("run_test must be implemented by TestCase subclasses")
 
-    def as_command(self, test_logger):
+    def _as_command(self, test_logger):
         """
         Returns the command invocation used to run the test.
         """

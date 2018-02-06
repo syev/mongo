@@ -1,6 +1,4 @@
-"""
-unittest.TestCase for JSON Schema tests.
-"""
+"""TestCase for JSON Schema tests."""
 
 from __future__ import absolute_import
 

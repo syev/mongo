@@ -1,6 +1,4 @@
-"""
-unittest.TestCase for dbtests.
-"""
+"""TestCase for dbtests."""
 
 from __future__ import absolute_import
 
@@ -56,10 +54,6 @@ class DBTestCase(interface.TestCase):
 
     def run_test(self, test_logger):
         try:
-            dbtest = self._make_process()
-            self._execute(dbtest)
-            self._clear_dbpath()
-        except self.failureException:
             dbtest = self._make_process(test_logger)
             self._execute(test_logger, dbtest)
             self._clear_dbpath()

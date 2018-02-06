@@ -1,7 +1,5 @@
 #!/usr/bin/env python
-"""
-Command line utility for execution MongoDB tests of all kinds.
-"""
+"""Command line utility for execution MongoDB tests of all kinds."""
 
 from __future__ import absolute_import
 
@@ -13,21 +11,15 @@ import sys
 if __name__ == "__main__" and __package__ is None:
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from buildscripts import resmokelib
-
 from buildscripts.resmokelib import config
-from buildscripts.resmokelib import parser
-from buildscripts.resmokelib import sighandler
-from buildscripts.resmokelib import suites
 from buildscripts.resmokelib import errors
-from buildscripts.resmokelib import testing
 from buildscripts.resmokelib import logging
+from buildscripts.resmokelib import parser
+from buildscripts.resmokelib import reportfile
+from buildscripts.resmokelib import sighandler
+from buildscripts.resmokelib import suites as suitesconfig
+from buildscripts.resmokelib import testing
 from buildscripts.resmokelib import utils
-
-
-# TODO go through resmoke.py and copy comments
-# TODO add more comments
-# TODO check all is implemented
 
 
 class Resmoke(object):
@@ -37,9 +29,6 @@ class Resmoke(object):
         self._config = None
         self._exec_logger = None
         self._resmoke_logger = None
-
-    def configure(self, resmoke_config):
-        self._config = resmoke_config
 
     def configure_from_command_line(self):
         self._config = parser.parse_command_line()
@@ -65,10 +54,12 @@ class Resmoke(object):
             self.run_tests()
 
     def list_suites(self):
-        suite_names = suites.get_named_suites()
+        """Lists the suites that are available to execute."""
+        suite_names = suitesconfig.get_named_suites()
         self._resmoke_logger.info("Suites available to execute:\n%s", "\n".join(suite_names))
 
     def find_suites(self):
+        """Lists the suites that run the sepcified tests."""
         suites = self._get_suites()
         suites_by_test = self._find_suites_by_test(suites)
         for test in sorted(suites_by_test):
@@ -79,25 +70,23 @@ class Resmoke(object):
     def _find_suites_by_test(self, suites):
         """
         Looks up what other resmoke suites run the tests specified in the suites
-        parameter. Returns a dict keyed by test name, value is array of suite na  mes.
+        parameter. Returns a dict keyed by test name, value is array of suite names.
         """
         memberships = {}
-        test_membership = resmokelib.suites.create_test_membership_map()
-        for suite, _ in suites:
+        test_membership = suitesconfig.create_test_membership_map()
+        for suite in suites:
             for test in suite.tests:
                 memberships[test] = test_membership[test]
         return memberships
 
     def dry_run(self):
+        """Lists which tests would run and which tests would be excluded in a resmoke invocation."""
         suites = self._get_suites()
         for suite, _ in suites:
             self._shuffle_tests(suite)
-            sb = []
-            sb.append("Tests that would be run in suite %s" %
-                      suite.get_display_name())
+            sb = ["Tests that would be run in suite {}".format(suite.get_display_name())]
             sb.extend(self._tests_display_list(suite.tests))
-            sb.append("Tests that would be excluded from suite %s" %
-                      suite.get_display_name())
+            sb.append("Tests that would be excluded from suite {}".format(suite.get_display_name()))
             sb.extend(self._tests_display_list(suite.excluded))
             self._exec_logger.info("\n".join(sb))
 
@@ -109,42 +98,51 @@ class Resmoke(object):
             return ["(no tests)"]
 
     def run_tests(self):
+        """Runs the suite and tests specified."""
+        self._resmoke_logger.info("resmoke.py invocation: %s", " ".join(sys.argv))
         try:
             suites = self._get_suites()
+            suites_and_reports = []
 
-            for suite, suite_report in suites:
+            for suite in suites:
+                suite_report = testing.report.SuiteReport(
+                    suite.get_display_name(), len(suite.tests))
                 self._report.add_suite(suite_report)
+                suites_and_reports.append((suite, suite_report))
+
             self._setup_signal_handler()
 
-            for suite, suite_report in suites:
+            for suite, suite_report in suites_and_reports:
                 self.run_suite(suite, suite_report)
 
             self._report.record_end()
             self._log_resmoke_summary()
 
             # Exit with a nonzero code if any of the suites failed.
-            exit_code = max(report.return_code for _, report in suites)
+            exit_code = max(report.return_code for _, report in suites_and_reports)
             self.exit(exit_code)
         finally:
             # TODO do we want to skip if interrupted?
-            resmokelib.logging.flush.stop_thread()
-            resmokelib.reportfile.write_evergreen_report(self._report)
+            logging.flush.stop_thread()
+            reportfile.write_evergreen_report(self._report)
 
     def run_suite(self, suite, suite_report):
+        """Runs a test suite."""
         self._log_suite_config(suite)
         suite_report.record_suite_start()
         self._execute_suite(suite, suite_report)
         suite_report.record_suite_end()
         self._log_suite_summary(suite_report)
         self._handle_suite_result(suite, suite_report)
-        # "Summary of %s suite: %s", suite.get_display_name(), suite_report.get_summary())
 
     def _log_resmoke_summary(self):
+        """Logs a summary of the resmoke run."""
         if len(self._config.suite_files) > 1:
             self._resmoke_logger.info("=" * 80)
             self._resmoke_logger.info(self._report.get_summary())
 
     def _log_suite_summary(self, suite_report):
+        """Logs a summary of the suite run."""
         self._resmoke_logger.info("=" * 80)
         self._resmoke_logger.info(suite_report.get_summary())
 
@@ -152,7 +150,6 @@ class Resmoke(object):
         self._shuffle_tests(suite)
         if not suite.tests:
             self._exec_logger.info("Skipping %s, no tests to run", suite.test_kind)
-            # set return code on suite_report?
             return
         executor = testing.executor.TestSuiteExecutor(
             self._exec_logger, suite, suite_report)
@@ -177,8 +174,7 @@ class Resmoke(object):
         sighandler.register(self._resmoke_logger, self._report)
 
     def _log_suite_config(self, suite):
-        sb = []
-        sb.append("YAML configuration of suite %s" % (suite.get_display_name()))
+        sb = ["YAML configuration of suite {}".format(suite.get_display_name())]
         sb.append(utils.dump_yaml({"test_kind": suite.get_test_kind_config()}))
         sb.append("")
         sb.append(utils.dump_yaml({"selector": suite.get_selector_config()}))
@@ -192,35 +188,25 @@ class Resmoke(object):
 
     def _get_suites(self):
         try:
-            suites = resmokelib.suites.get_suites(self._config.suite_files,
-                                                  self._config.test_files,
-                                                  self._config.exclude_with_any_tags,
-                                                  self._config.include_with_any_tags)
-            return [(suite, testing.report.SuiteReport(suite.get_display_name(), len(suite.tests)))
-                    for suite in suites]
+            return suitesconfig.get_suites(self._config.suite_files,
+                                           self._config.test_files,
+                                           self._config.exclude_with_any_tags,
+                                           self._config.include_with_any_tags)
         except errors.SuiteNotFound as err:
             self._resmoke_logger.error("Failed to parse YAML suite definition: %s", str(err))
             self.list_suites()
             self.exit(1)
 
-    def exit(self, exit_code, message=None):
-        raise errors.ResmokeError("Resmoke error (%d)" % exit_code)
-
-
-class ResmokeCli(Resmoke):
-    def __init__(self):
-        Resmoke.__init__(self)
-
-    def run_tests(self):
-        self._resmoke_logger.info("resmoke.py invocation: %s", " ".join(sys.argv))
-        Resmoke.run_tests(self)
-        # Maybe catch exceptions here and handle the exit_codes
-
-    def exit(self, exit_code, message=None):
+    def exit(self, exit_code):
+        self._resmoke_logger.info("Exiting with code: %d", exit_code)
         sys.exit(exit_code)
 
 
-if __name__ == "__main__":
-    resmoke = ResmokeCli()
+def main():
+    resmoke = Resmoke()
     resmoke.configure_from_command_line()
     resmoke.run()
+
+
+if __name__ == "__main__":
+    main()

@@ -11,7 +11,7 @@ from ..testcases import interface as testcase
 from ... import errors
 
 
-class CleanEveryN(interface.CustomBehavior):
+class CleanEveryN(interface.Hook):
     """
     Restarts the fixture after it has ran 'n' tests.
     On mongod-related fixtures, this will clear the dbpath.
@@ -21,7 +21,7 @@ class CleanEveryN(interface.CustomBehavior):
 
     def __init__(self, hook_logger, fixture, n=DEFAULT_N):
         description = "CleanEveryN (restarts the fixture after running `n` tests)"
-        interface.CustomBehavior.__init__(self, hook_logger, fixture, description)
+        interface.Hook.__init__(self, hook_logger, fixture, description)
 
         # Try to isolate what test triggers the leak by restarting the fixture each time.
         if "detect_leaks=1" in os.getenv("ASAN_OPTIONS", ""):

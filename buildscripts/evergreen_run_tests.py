@@ -21,7 +21,7 @@ from buildscripts import resmokelib
 _TagInfo = collections.namedtuple("_TagInfo", ["tag_name", "evergreen_aware", "suite_options"])
 
 
-class Main(resmoke.Main):
+class EvergreenResmoke(resmoke.Resmoke):
     """
     A class for executing potentially multiple resmoke.py test suites in a way that handles
     additional options for running unreliable tests in Evergreen.
@@ -116,7 +116,7 @@ class Main(resmoke.Main):
 
         suites = []
 
-        for suite in resmoke.Main._get_suites(self):
+        for suite in resmoke.Resmoke._get_suites(self):
             if suite.test_kind != "js_test":
                 # Tags are only support for JavaScript tests, so we leave the test suite alone when
                 # running any other kind of test.
@@ -148,5 +148,11 @@ class Main(resmoke.Main):
         return suites
 
 
+def main():
+    resmoke = EvergreenResmoke()
+    resmoke.configure_from_command_line()
+    resmoke.run()
+
+
 if __name__ == "__main__":
-    Main().run()
+    main()

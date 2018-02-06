@@ -1,6 +1,4 @@
-"""
-Package containing subclasses of unittest.TestCase.
-"""
+"""Package containing subclasses of test cases implementations."""
 
 from __future__ import absolute_import
 

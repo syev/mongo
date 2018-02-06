@@ -23,6 +23,13 @@ class TestSuiteExecutor(object):
     _TIMEOUT = 24 * 60 * 60  # =1 day (a long time to have tests run)
 
     def __init__(self, exec_logger, suite, suite_report):
+        """Initializes a TestSuiteExecutor.
+
+        Args:
+            exec_logger: The executor root logger.
+            suite: The suite to execute as a Suite instance.
+            suite_report: The report for the suite as a SuiteReport instance.
+        """
         self.logger = exec_logger
         self._suite = suite
         self._suite_report = suite_report
@@ -34,7 +41,6 @@ class TestSuiteExecutor(object):
         self._override_config()
 
         self._coordinator = _job.JobCoordinator()
-        # create jobs
         self._jobs = self._make_jobs()
 
     def _override_config(self):
@@ -45,9 +51,9 @@ class TestSuiteExecutor(object):
             self.fixture_config = {"class": fixtures.NOOP_FIXTURE_CLASS}
 
     def run(self):
+        """Executes the test suite and handles exceptions."""
         try:
             self._run()
-            self._suite_report.set_success()
         except errors.UserInterrupt:
             self.logger.warning("Suite execution stopping after user interrupt")
             # Simulate SIGINT as exit code.
@@ -58,13 +64,14 @@ class TestSuiteExecutor(object):
             self._suite_report.set_interrupted(return_code=74)
         except errors.ServerFailure as err:
             self.logger.warning("Suite execution stopping after fixture error: %s", err)
-            self._suite_report.set_error(return_code=2)
+            self._suite_report.set_failed(return_code=2)
         except:
             self.logger.exception("Encountered an error when running suite %s (%s).",
                                   self._suite.get_display_name(), self._suite.test_kind)
-            self._suite_report.set_error(return_code=2)
+            self._suite_report.set_failed(return_code=2)
 
     def _run(self):
+        """Executes the suite."""
         self.logger.info("Starting execution of %ss...", self._suite.test_kind)
         self._setup_fixtures()
         last_execution = False
@@ -77,12 +84,24 @@ class TestSuiteExecutor(object):
                 self._run_execution(test_queue, teardown=last_execution)
                 self._suite_report.record_execution_end()
                 self._log_execution_summary()
+                if not self._suite_report.was_last_execution_successful():
+                    self._suite_report.set_failed(return_code=1)
+                    if self._suite.options.fail_fast:
+                        break
                 num_repeats -= 1
         finally:
             if not last_execution:
                 self._teardown_fixtures()
 
     def _run_execution(self, test_queue, teardown):
+        """Runs one execution of the test suite.
+
+        Args:
+            test_queue: The test queue containing the test cases of the suite.
+            teardown: Indicates if the fixture should be torn down when the execution ends.
+        Raises:
+            errors.UserInterrupt: The main thread execution has been interrupted.
+        """
         threads = []
         try:
             for job in self._jobs:
@@ -96,14 +115,13 @@ class TestSuiteExecutor(object):
             raise errors.UserInterrupt()
 
     def _log_execution_summary(self):
-        # TODO check if this is same as original
         summary = self._suite_report.get_last_execution_summary()
         self.logger.info(summary)
 
     def _start_job(self, job, test_queue, teardown):
-        # FIXME We shouldn't need to pass these
-        # TestReport should handle logging and stuff
-        test_report = self._suite_report.create_test_report(job.logger, self._suite.options)
+        """Starts a job in a new thread and returns the thread."""
+        test_report = self._suite_report.create_test_report(
+            self._suite.options.report_failure_status)
         thread = threading.Thread(
             target=job, args=(test_queue, test_report, self._coordinator, teardown))
         thread.daemon = True
@@ -124,8 +142,7 @@ class TestSuiteExecutor(object):
         """
         Returns a queue of TestCase instances.
 
-        Use a multi-consumer queue instead of a unittest.TestSuite so
-        that the test cases can be dispatched to multiple threads.
+        Use a multi-consumer queue so that the test cases can be dispatched to multiple threads.
         """
 
         # test_queue_logger = self.logger.new_testqueue_logger(self._suite.test_kind)
@@ -149,6 +166,7 @@ class TestSuiteExecutor(object):
     # #######################
 
     def _make_jobs(self):
+        """Creates the Job instances needed for the suite execution."""
         # Only start as many jobs as we need. Note this means that the number of jobs we run may not
         # actually be _config.JOBS or self._suite.options.num_jobs.
         jobs_to_start = self._suite.options.num_jobs
@@ -168,9 +186,6 @@ class TestSuiteExecutor(object):
         fixture = self._make_fixture(job_num, job_logger)
         hooks = self._make_hooks(fixture)
 
-        # TODO
-
-        # return _job.Job(job_logger, fixture, hooks, report, self._suite.options)
         return _job.Job(job_logger, fixture, hooks, self._suite.options)
 
     # #######################
@@ -213,7 +228,6 @@ class TestSuiteExecutor(object):
         Raises:
             ServerFailure if a fixture cannot be torn down successfully.
         """
-        # FIXME make sure we can call this when the fixtures have already been torn down?
         for job in self._jobs:
             job.fixture.teardown(finished=True)
 
@@ -222,18 +236,17 @@ class TestSuiteExecutor(object):
     # #######################
 
     def _make_hooks(self, fixture):
-        """Creates the custom behaviors for the job's fixture."""
+        """Creates the hooks for the job's fixture."""
+        hooks = []
+        for hook_config in self._hooks_config:
+            hook_config = hook_config.copy()
+            hook_class = hook_config.pop("class")
 
-        behaviors = []
-        for behavior_config in self._hooks_config:
-            behavior_config = behavior_config.copy()
-            behavior_class = behavior_config.pop("class")
+            hook_logger = self.logger.new_hook_logger(hook_class, fixture.logger)
+            hook = _hooks.make_hook(hook_class,
+                                    hook_logger,
+                                    fixture,
+                                    **hook_config)
+            hooks.append(hook)
 
-            hook_logger = self.logger.new_hook_logger(behavior_class, fixture.logger)
-            behavior = _hooks.make_custom_behavior(behavior_class,
-                                                   hook_logger,
-                                                   fixture,
-                                                   **behavior_config)
-            behaviors.append(behavior)
-
-        return behaviors
+        return hooks

@@ -16,26 +16,32 @@ STATUS_FAIL = "fail"
 STATUS_ERROR = "error"
 STATUS_TIMEOUT = "timeout"
 RETURN_CODE_TIMEOUT = -2
-EVG_STATUS_SUCCESS = "success"
+EVG_STATUS_SUCCESS = "pass"
 EVG_STATUS_FAIL = "fail"
 
 
 class ResmokeReport(object):
+    """A report for an invocation of resmoke.py"""
+
     def __init__(self):
         self.start_time = None
         self.end_time = None
         self.suite_reports = []
 
     def record_start(self):
+        """Records the start time of the resmoke execution."""
         self.start_time = time.time()
 
     def record_end(self):
+        """Records the end time of the resmoke execution."""
         self.end_time = time.time()
 
     def add_suite(self, suite_report):
+        """Adds a suite report for a suite to be run during the resmoke execution."""
         self.suite_reports.append(suite_report)
 
     def get_summary(self):
+        """Returns a string summary of the resmoke execution that can be logged."""
         time_taken = self.end_time - self.start_time
         sb = ["Summary of all suites: {:d} suites ran in {:0.2f} seconds".format(
             len(self.suite_reports), time_taken)]
@@ -44,6 +50,7 @@ class ResmokeReport(object):
         return "\n".join(sb)
 
     def get_combined_report(self):
+        """Returns a TestReportInfo instance with the combined results of all the tests run."""
         combined_reports = []
         for suite_report in self.suite_reports:
             combined_reports.append(suite_report.get_combined_report())
@@ -51,14 +58,22 @@ class ResmokeReport(object):
 
 
 class SuiteReport(object):
+    """A report for one or more repeat executions of a suite in resmoke."""
+
     def __init__(self, suite_name, nb_tests):
+        """Creates a new report.
+
+        Args:
+            suite_name: the suite name.
+            nb_tests: the number of tests contained in the suite.
+        """
         self.suite_name = suite_name
         self.nb_tests = nb_tests
         self.suite_start = None
         self.suite_end = None
 
         self.interrupted = False
-        self.return_code = None
+        self.return_code = 0
 
         # TODO Replace with better handling of times
         self.execution_start_times = []
@@ -89,21 +104,17 @@ class SuiteReport(object):
         self.execution_end_times.append(time.time())
         self.current_execution = None
 
-    # FIXME we shouldn't need these parameters
-    def create_test_report(self, job_logger, suite_options):
-        test_report = TestReport(job_logger, suite_options)
+    def create_test_report(self, failure_status):
+        test_report = TestReport(failure_status)
         assert self.current_execution is not None
         self.current_execution.append(test_report)
         return test_report
-
-    def set_success(self):
-        self.return_code = 0
 
     def set_interrupted(self, return_code):
         self.interrupted = True
         self.return_code = return_code
 
-    def set_error(self, return_code):
+    def set_failed(self, return_code):
         self.return_code = return_code
 
     def get_summary(self):
@@ -188,6 +199,10 @@ class SuiteReport(object):
         end_time = self.execution_end_times[nb_finished_executions - 1]
         report_summary = self._get_report_summary(report, end_time - start_time)
         return "Summary: {}".format("\n".join(report_summary))
+
+    def was_last_execution_successful(self):
+        assert len(self.executions) > 0, "No execution has completed"
+        return self.executions[-1].was_successful()
 
     def get_combined_report(self):
         _, _, executions = self._get_all_executions()
@@ -411,11 +426,10 @@ class TestReportInfo(object):
 class TestReport(object):
     """Records test status and timing information."""
 
-    def __init__(self, job_logger, suite_options):
+    def __init__(self, failure_status):
         """Initializes the TestReport with the buildlogger configuration."""
 
-        self.job_logger = job_logger
-        self.suite_options = suite_options
+        self._failure_status = failure_status
         self._lock = threading.Lock()
         self._report_info = TestReportInfo()
         self.__original_loggers = {}
@@ -443,7 +457,7 @@ class TestReport(object):
     def fail_test(self, test_id, return_code):
         with self._lock:
             self._report_info.add_failure(
-                test_id, return_code, self.suite_options.report_failure_status)
+                test_id, return_code, self._failure_status)
 
     def error_test(self, test_id, return_code):
         with self._lock:
@@ -469,7 +483,7 @@ class TestReport(object):
         """Used to change the outcome of an existing test to a failure."""
         with self._lock:
             self._report_info.update_failure(
-                test_id, return_code, self.suite_options.report_failure_status)
+                test_id, return_code, self._failure_status)
 
     def was_successful(self):
         with self._lock:

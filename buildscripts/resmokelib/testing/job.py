@@ -13,46 +13,41 @@ from ..utils import queue as _queue
 
 
 class JobCoordinator(object):
+    """An object that is shared by jobs running in different threads to synchronize execution."""
+
     def __init__(self):
         self.interrupted = False
         self.teardown_error = False
-        self.teardown_on_exit = False
 
     def set_interrupted(self):
+        """Mark the jobs execution as being interrupted."""
         self.interrupted = True
 
     def set_teardown_error(self):
+        """Marks the teardown of a job fixture as having failed."""
         self.teardown_error = True
-
-    def set_teardown_on_exit(self):
-        self.teardown_on_exit = True
 
 
 class Job(object):
-    """
-    Runs tests from a queue.
-    """
+    """Runs tests from a queue."""
 
-    # def __init__(self, logger, fixture, hooks, report, suite_options):
     def __init__(self, logger, fixture, hooks, suite_options):
-        """Initializes the job with the specified fixture and custom behaviors."""
+        """Initializes the job with the specified fixture and hooks."""
         self.logger = logger
         self.fixture = fixture
         self.hooks = hooks
         self.suite_options = suite_options
 
-    # def __call__(self, queue, interrupt_flag, teardown_flag=None):
     def __call__(self, queue, test_report, coordinator, teardown=False):
         """
         Continuously executes tests from 'queue' and records their
         details in 'test_report'.
 
-        If 'teardown_flag' is not None, then 'self.fixture.teardown()'
+        If 'teardown' is True, then 'self.fixture.teardown()'
         will be called before this method returns. If an error occurs
-        while destroying the fixture, then the 'teardown_flag' will be
-        set.
+        while destroying the fixture, then 'teardown_error' will be
+        set to True on the coordinator.
         """
-
         try:
             self._run(queue, test_report, coordinator)
         except errors.StopExecution as err:

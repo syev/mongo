@@ -10,7 +10,7 @@ from ..testcases import jstest
 from ...utils import registry
 
 
-class JsCustomBehavior(interface.TestCaseHook):
+class JsHook(interface.TestCaseHook):
     REGISTERED_NAME = registry.LEAVE_UNREGISTERED
 
     def __init__(self, hook_logger, fixture, js_filename, description, shell_options=None):
@@ -22,3 +22,4 @@ class JsCustomBehavior(interface.TestCaseHook):
         test_case = jstest.JSTestCase(self._js_file_name, shell_options=self._shell_options,
                                       test_kind="Hook", dynamic=True)
         test_case.test_name = test_name
+        return test_case

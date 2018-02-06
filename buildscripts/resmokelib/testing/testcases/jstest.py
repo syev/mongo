@@ -1,6 +1,4 @@
-"""
-unittest.TestCase for JavaScript tests.
-"""
+"""TestCase for JavaScript tests."""
 
 from __future__ import absolute_import
 
