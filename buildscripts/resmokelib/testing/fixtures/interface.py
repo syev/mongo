@@ -72,6 +72,9 @@ class Fixture(object):
 
         The fixture's logging handlers are closed if 'finished' is true,
         which should happen when setup() won't be called again.
+
+        Raises:
+            errors.ServerFailure: If the teardown is not successful.
         """
 
         try:
@@ -86,10 +89,23 @@ class Fixture(object):
     def _do_teardown(self):
         """
         Destroys the fixture.
+
+        This method must be implemented by subclasses.
+
+        Raises:
+            errors.ServerFailure: If the teardown is not successful.
         """
         pass
 
     def _do_try_teardown(self, fixture, name):
+        """A helper method that tries to teardown a fixture and returns True on success.
+
+        Args:
+            fixture: The fixture to tear down.
+            name: The name of the fixture.
+        Returns:
+             True if the teardown is successful, False otherwise.
+        """
         try:
             self.logger.info("Tearing down %s...", name)
             fixture.teardown()

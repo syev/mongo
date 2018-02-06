@@ -75,28 +75,31 @@ class SuiteReport(object):
         self.interrupted = False
         self.return_code = 0
 
-        # TODO Replace with better handling of times
         self.execution_start_times = []
         self.execution_end_times = []
         self.executions = []
         self.current_execution = None
 
     def record_suite_start(self):
+        """Records the start of the suite run."""
         assert self.suite_start is None, "record_suite_start() can only be called once."
         self.suite_start = time.time()
 
     def record_suite_end(self):
+        """Records the end of the suite run."""
         assert self.suite_start is not None, "cannot end a suite that was not started."
         assert self.suite_end is None, "record_suite_end() can only be called once."
         self.suite_end = time.time()
 
     def record_execution_start(self):
+        """Records the start of an execution of the suite."""
         assert self.current_execution is None, ("Cannot start an execution, "
                                                 "previous execution was not stopped.")
         self.execution_start_times.append(time.time())
         self.current_execution = []
 
     def record_execution_end(self):
+        """Records the end of an execution of the suite."""
         assert self.current_execution is not None, ("Cannot stop an execution, "
                                                     "no execution in progress.")
         report_infos = [report.get_info() for report in self.current_execution]
@@ -105,19 +108,23 @@ class SuiteReport(object):
         self.current_execution = None
 
     def create_test_report(self, failure_status):
+        """Creates a TestReport to track the test results for the current execution of the suite."""
         test_report = TestReport(failure_status)
         assert self.current_execution is not None
         self.current_execution.append(test_report)
         return test_report
 
     def set_interrupted(self, return_code):
+        """Marks the suite as being interrupted."""
         self.interrupted = True
         self.return_code = return_code
 
     def set_failed(self, return_code):
+        """Marks the suite as failed."""
         self.return_code = return_code
 
     def get_summary(self):
+        """Returns a summary of the suite run."""
         header, details = self._get_summary()
         summary = "Summary of {} suite: {}".format(self.suite_name, header)
         if details:
@@ -125,6 +132,14 @@ class SuiteReport(object):
         return summary
 
     def _get_all_executions(self):
+        """Returns data on all executions, including the ongoing execution if not finished.
+
+        Returns:
+            A tuple with:
+            - an array of start times for each execution
+            - an array of end times for each execution
+            - an array of TestReportInfos for each execution
+        """
         executions = copy.copy(self.executions)
         start_times = copy.copy(self.execution_start_times)
         end_times = copy.copy(self.execution_end_times)
@@ -135,6 +150,7 @@ class SuiteReport(object):
         return start_times, end_times, executions
 
     def _get_summary(self):
+        """Returns a summary header and details for the suite."""
         end_time = self.suite_end or time.time()
         time_taken = end_time - self.suite_start
         start_times, end_times, executions = self._get_all_executions()
@@ -151,6 +167,7 @@ class SuiteReport(object):
                                                       time_taken)
 
     def _get_single_execution_summary(self, report, time_taken):
+        """Returns a summary header and details for one execution of the suite."""
         if report.was_successful():
             header = "All tests passed."
         else:
@@ -158,6 +175,7 @@ class SuiteReport(object):
         return header, "\n".join(self._get_report_summary(report, time_taken))
 
     def _get_multi_executions_summary(self, reports, start_times, end_times, time_taken):
+        """Returns a summary and details for multiple executiosn of the suite."""
         # time_taken = end_times[-1] - start_times[0]
         header = "Executed {:d} times in {:0.2f} seconds.".format(len(reports), time_taken)
         combined_report = TestReportInfo.combine(reports)
@@ -172,6 +190,7 @@ class SuiteReport(object):
         return header, "\n".join(sb)
 
     def _get_report_summary(self, test_report, time_taken, details=True):
+        """Returns a summary of a TestReportInfo as an array of str."""
         num_failed = test_report.num_failed + test_report.num_interrupted
         num_run = test_report.num_succeeded + test_report.num_errored + num_failed
         num_skipped = self.nb_tests + test_report.num_dynamic - num_run
@@ -194,6 +213,7 @@ class SuiteReport(object):
         return sb
 
     def get_last_execution_summary(self):
+        """Returns a summary of the last completed execution of the suite."""
         if not self.executions:
             return "Summary: No execution."
         nb_finished_executions = len(self.executions)
@@ -204,15 +224,18 @@ class SuiteReport(object):
         return "Summary: {}".format("\n".join(report_summary))
 
     def was_last_execution_successful(self):
+        """Indicates if the last completed execution was successful."""
         assert len(self.executions) > 0, "No execution has completed"
         return self.executions[-1].was_successful()
 
     def get_combined_report(self):
+        """Returns a TestReportInfo with the combined results of all executions of the suite."""
         _, _, executions = self._get_all_executions()
         return TestReportInfo.combine(executions)
 
     @staticmethod
     def _indent(text, nb_spaces=4):
+        """Indents the given text (str or array of str) by the given number of spaces."""
         indent = " " * nb_spaces
         if isinstance(text, str):
             return indent + text
@@ -220,6 +243,10 @@ class SuiteReport(object):
 
 
 class TestReportInfo(object):
+    """A report for multiple tests.
+
+    This class is not thread-safe.
+    """
     def __init__(self):
         self.test_infos = []
         self.num_dynamic = 0
@@ -229,6 +256,7 @@ class TestReportInfo(object):
         self.num_interrupted = 0
 
     def clone(self):
+        """Clones this report."""
         clone = TestReportInfo()
         clone.test_infos = copy.copy(self.test_infos)
         clone.num_dynamic = self.num_dynamic
@@ -239,11 +267,13 @@ class TestReportInfo(object):
         return clone
 
     def end_report(self, end_time):
+        """Ends this report by marking all the onging tests as timed out."""
         for test_info in self.test_infos:
             self._end_test_info(test_info, end_time)
 
     @staticmethod
     def _end_test_info(test_info, end_time):
+        """Ends the given test info if it is still ongoing by marking it as timed out."""
         if test_info.status is None or test_info.return_code is None:
             # Mark the test as having timed out if it was interrupted. It might have
             # passed if the suite ran to completion, but we wouldn't know for sure.
@@ -262,6 +292,7 @@ class TestReportInfo(object):
 
     @classmethod
     def combine(cls, report_infos):
+        """Combines the given report_infos into one."""
         combined_info = cls()
         combining_time = time.time()
         for info in report_infos:
@@ -278,18 +309,23 @@ class TestReportInfo(object):
         return combined_info
 
     def get_by_status(self, status):
+        """Retrieves all the test infos with the specified status."""
         return [info for info in self.test_infos if info.status == status]
 
     def get_errored(self):
+        """Retrieves all the test infos with an error status."""
         return self.get_by_status(STATUS_ERROR)
 
     def get_interrupted(self):
+        """Retrieves all the test infos with an interrupted (timeout) status."""
         return self.get_by_status(STATUS_TIMEOUT)
 
     def get_failed(self):
+        """Retrieves all the test infos with a failed status."""
         return self.get_by_status(STATUS_FAIL)
 
     def get_by_id(self, test_id):
+        """Retrieves the test info or the given test id."""
         # Search the list backwards to efficiently find the status and timing information of a test
         # that was recently started.
         for test_info in reversed(self.test_infos):
@@ -297,7 +333,8 @@ class TestReportInfo(object):
                 return test_info
         raise ValueError("Details for {} not found in the report".format(test_id))
 
-    def start_test(self, test_id, dynamic):
+    def record_test_start(self, test_id, dynamic):
+        """Records the start of a test."""
         test_info = _TestInfo(test_id, dynamic)
         test_info.start_time = time.time()
         self.test_infos.append(test_info)
@@ -305,21 +342,23 @@ class TestReportInfo(object):
             self.num_dynamic += 1
         return test_info
 
-    def stop_test(self, test_id):
-        # return time taken
+    def record_test_end(self, test_id):
+        """Records the end of a test and returns the time taken by the test run."""
         test_info = self.get_by_id(test_id)
         assert test_info.end_time is None, "Test {} was already marked as stopped".format(test_id)
         test_info.end_time = time.time()
         return test_info.end_time - test_info.start_time
 
-    def add_success(self, test_id, return_code):
+    def record_test_success(self, test_id, return_code):
+        """Records that a test passed."""
         test_info = self.get_by_id(test_id)
         test_info.status = STATUS_SUCCESS
         test_info.evergreen_status = EVG_STATUS_SUCCESS
         test_info.return_code = return_code
         self.num_succeeded += 1
 
-    def set_error(self, test_id, return_code):
+    def record_test_error(self, test_id, return_code):
+        """Records that an error occurred during the test run."""
         test_info = self.get_by_id(test_id)
         # We don't distinguish between test failures and Python errors in Evergreen.
         test_info.status = STATUS_ERROR
@@ -327,7 +366,8 @@ class TestReportInfo(object):
         test_info.return_code = return_code
         self.num_errored += 1
 
-    def update_error(self, test_id, return_code):
+    def update_test_error(self, test_id, return_code):
+        """Updates a previous test result and changes its status to error."""
         test_info = self.get_by_id(test_id)
         assert test_info.end_time is not None, "Test {} was not stopped".format(test_id)
         # We don't distinguish between test failures and Python errors in Evergreen.
@@ -336,7 +376,8 @@ class TestReportInfo(object):
         test_info.return_code = return_code
         self._recompute_nums()
 
-    def add_failure(self, test_id, return_code, report_failure_status):
+    def record_test_failure(self, test_id, return_code, report_failure_status):
+        """Records that a test failed."""
         test_info = self.get_by_id(test_id)
         test_info.status = STATUS_FAIL
         if test_info.dynamic:
@@ -348,7 +389,8 @@ class TestReportInfo(object):
         test_info.return_code = return_code
         self.num_failed += 1
 
-    def update_failure(self, test_id, return_code, report_failure_status):
+    def update_test_failure(self, test_id, return_code, report_failure_status):
+        """Updates a previous test result and changes its status to failed."""
         test_info = self.get_by_id(test_id)
         assert test_info.end_time is not None, "Test {} was not stopped".format(test_id)
         test_info.status = STATUS_FAIL
@@ -362,9 +404,11 @@ class TestReportInfo(object):
         self._recompute_nums()
 
     def was_successful(self):
+        """Indicates if all the tests passed."""
         return self.num_failed == self.num_errored == self.num_interrupted == 0
 
     def _recompute_nums(self):
+        """Recomputes the internal counters."""
         self.num_succeeded = len(self.get_by_status(STATUS_SUCCESS))
         self.num_failed = len(self.get_by_status(STATUS_FAIL))
         self.num_errored = len(self.get_by_status(STATUS_ERROR))
@@ -438,57 +482,64 @@ class TestReport(object):
         self.__original_loggers = {}
 
     def get_info(self):
+        """Returns a copy of the TestReportInfo for this test report."""
         with self._lock:
             return self._report_info.clone()
 
-    def start_test(self, test_id, url_endpoint, dynamic=False):
+    def record_test_start(self, test_id, url_endpoint, dynamic=False):
+        """Records the start of a test."""
         with self._lock:
-            test_info = self._report_info.start_test(test_id, dynamic)
+            test_info = self._report_info.record_test_start(test_id, dynamic)
 
         test_info.url_endpoint = url_endpoint
 
-    def stop_test(self, test_id):
+    def record_test_end(self, test_id):
+        """Records the end of a test and returns the time taken by the test run."""
         with self._lock:
-            time_taken = self._report_info.stop_test(test_id)
+            return self._report_info.record_test_end(test_id)
 
-        return time_taken
-
-    def pass_test(self, test_id, return_code):
+    def record_test_success(self, test_id, return_code):
+        """Records that a test passed."""
         with self._lock:
-            self._report_info.add_success(test_id, return_code)
+            self._report_info.record_test_success(test_id, return_code)
 
-    def fail_test(self, test_id, return_code):
+    def record_test_failure(self, test_id, return_code):
+        """Records that a test failed."""
         with self._lock:
-            self._report_info.add_failure(
+            self._report_info.record_test_failure(
                 test_id, return_code, self._failure_status)
 
-    def error_test(self, test_id, return_code):
+    def record_test_error(self, test_id, return_code):
+        """Records that an error occurred during the test run."""
         with self._lock:
-            self._report_info.set_error(test_id, return_code)
+            self._report_info.record_test_error(test_id, return_code)
 
     def start_fail_stop(self, test_id, return_code):
-        self.start_test(test_id, url_endpoint=None)
-        self.fail_test(test_id, return_code)
-        self.stop_test(test_id)
+        """Records the start, the failure and the end of a test at once."""
+        self.record_test_start(test_id, url_endpoint=None)
+        self.record_test_failure(test_id, return_code)
+        self.record_test_end(test_id)
 
     def start_error_stop(self, test_id, return_code):
-        self.start_test(test_id, url_endpoint=None)
-        self.error_test(test_id, return_code)
-        self.stop_test(test_id)
+        """Records the start, the error and the end of a test at once."""
+        self.record_test_start(test_id, url_endpoint=None)
+        self.record_test_error(test_id, return_code)
+        self.record_test_end(test_id)
 
-    def update_error_test(self, test_id):
+    def update_test_error(self, test_id):
         """Used to change the outcome of an existing test to an error."""
 
         with self._lock:
-            self._report_info.update_error(test_id, return_code=2)
+            self._report_info.update_test_error(test_id, return_code=2)
 
-    def update_fail_test(self, test_id, return_code=1):
+    def update_test_failure(self, test_id, return_code=1):
         """Used to change the outcome of an existing test to a failure."""
         with self._lock:
-            self._report_info.update_failure(
+            self._report_info.update_test_failure(
                 test_id, return_code, self._failure_status)
 
     def was_successful(self):
+        """Indicates if all the tests passed."""
         with self._lock:
             return self._report_info.was_successful()
 

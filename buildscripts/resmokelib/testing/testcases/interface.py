@@ -83,20 +83,20 @@ class TestCase(object):
                 command = self._as_command(None)
                 job_logger.info("Running %s...\n%s", self.basename(), command)
             test_logger = job_logger.new_test_logger(self.short_name(), self.basename(), command)
-            test_report.start_test(self.id(), test_logger.url_endpoint, dynamic=self.dynamic)
+            test_report.record_test_start(self.id(), test_logger.url_endpoint, dynamic=self.dynamic)
             self.run_test(test_logger)
-            test_report.pass_test(self.id(), self.return_code)
+            test_report.record_test_success(self.id(), self.return_code)
         except errors.TestFailure:
-            test_report.fail_test(self.id(), self.return_code)
+            test_report.record_test_failure(self.id(), self.return_code)
             self.exception = sys.exc_info()
         except KeyboardInterrupt:
             # Should not happen as tests are not run in the main thread
             raise
         except:
-            test_report.error_test(self.id(), self.return_code)
+            test_report.record_test_error(self.id(), self.return_code)
             self.exception = sys.exc_info()
         finally:
-            time_taken = test_report.stop_test(self.id())
+            time_taken = test_report.record_test_end(self.id())
             job_logger.info("%s ran in %0.2f seconds.", self.basename(), time_taken)
             if test_logger:
                 # Asynchronously closes the buildlogger test handler to avoid having too many

@@ -11,8 +11,8 @@ import bson
 import pymongo
 import pymongo.errors
 
-from . import interface
 from . import cleanup
+from . import interface
 from ..fixtures import replicaset
 from ..testcases import jstest
 from ... import errors
@@ -70,7 +70,7 @@ class BackgroundInitialSyncTestCase(jstest.JSTestCase):
         sync_node_conn = sync_node.mongo_client()
 
         # If it's been 'n' tests so far, wait for the initial sync node to finish syncing.
-        if self._hook.tests_run >= self._n:
+        if self._hook.tests_run >= self._hook.n:
             test_logger.info("%d tests have been run against the fixture, waiting for initial sync"
                              " node to go into SECONDARY state",
                              self._hook.tests_run)
@@ -169,7 +169,7 @@ class IntermediateInitialSync(interface.TestCaseHook):
         return True
 
     def _create_test_case_impl(self, test_name, description, base_test_name):
-        return IntermediateInitialSyncTestCase(test_name, description, self)
+        return IntermediateInitialSyncTestCase(test_name, description, base_test_name, self)
 
 
 class IntermediateInitialSyncTestCase(jstest.JSTestCase):

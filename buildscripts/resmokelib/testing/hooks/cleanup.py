@@ -29,20 +29,20 @@ class CleanEveryN(interface.Hook):
                              " the fixture after each test instead of after every %d.", n)
             n = 1
 
-        self._n = n
-        self._tests_run = 0
+        self.n = n
+        self.tests_run = 0
 
     def after_test(self, test, test_report, job_logger):
         """Restarts the fixture if a sufficient number of tests have run since last restart."""
-        self._tests_run += 1
-        if self._tests_run < self._n:
+        self.tests_run += 1
+        if self.tests_run < self.n:
             return
 
         test_name = "{}:{}".format(test.short_name(), self.__class__.__name__)
-        hook_test_case = CleanEveryNTestCase(test_name, self.fixture, self._tests_run)
+        hook_test_case = CleanEveryNTestCase(test_name, self.fixture, self.tests_run)
 
         hook_test_case.run(job_logger, test_report)
-        self._tests_run = 0
+        self.tests_run = 0
 
         if hook_test_case.return_code != 0:
             raise errors.StopExecution("Encountered an error while restarting the fixture")

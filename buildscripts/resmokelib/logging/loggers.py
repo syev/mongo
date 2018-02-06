@@ -143,7 +143,7 @@ class ExecutorRootLogger(RootLogger):
 
     def new_job_logger(self, test_kind, job_num):
         """Create a new child JobLogger."""
-        return JobLogger(test_kind, job_num, self, self.fixture_root_logger)
+        return JobLogger(test_kind, job_num, self, self.fixture_root_logger, self.tests_root_logger)
 
     def new_hook_logger(self, hook_class, fixture_logger):
         """Create a new child hook logger."""
@@ -151,17 +151,19 @@ class ExecutorRootLogger(RootLogger):
 
 
 class JobLogger(BaseLogger):
-    def __init__(self, test_kind, job_num, parent, fixture_root_logger):
+    def __init__(self, test_kind, job_num, parent, fixture_root_logger, tests_root_logger):
         """Initialize a JobLogger.
 
         :param test_kind: the test kind (e.g. js_test, db_test, etc.).
         :param job_num: a job number.
         :param fixture_root_logger: the root logger for the fixture logs.
+        :param tests_root_logger: the root logger for the test logs.
         """
         name = "executor:%s:job%d" % (test_kind, job_num)
         BaseLogger.__init__(self, name, parent=parent)
         self.job_num = job_num
         self.fixture_root_logger = fixture_root_logger
+        self.tests_root_logger = tests_root_logger
         # create build_id if it should
         if self.build_logger_server:
             self.build_id = self.build_logger_server.new_build_id("job%d" % job_num)
@@ -180,17 +182,17 @@ class JobLogger(BaseLogger):
 
     def new_test_logger(self, test_shortname, test_basename, command):
         """Create a new test logger that will be a child of the tests root logger."""
-        tests_root_logger = EXECUTOR_LOGGER.tests_root_logger
         if self.build_id:
             test_id = self.build_logger_server.new_test_id(self.build_id, test_basename, command)
             if test_id:
                 url = self.build_logger_server.get_test_log_url(self.build_id, test_id)
                 self.info("Writing output of %s to %s.", test_shortname, url)
-                return TestLogger(test_shortname, tests_root_logger, self.build_id, test_id, url)
+                return TestLogger(test_shortname, self.tests_root_logger,
+                                  self.build_id, test_id, url)
             else:
                 self.info("Encountered an error configuring buildlogger for test %s, falling"
                           " back to stderr.", test_shortname)
-        return TestLogger(test_shortname, tests_root_logger)
+        return TestLogger(test_shortname, self.tests_root_logger)
 
 
 class TestLogger(BaseLogger):

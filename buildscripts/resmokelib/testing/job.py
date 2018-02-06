@@ -117,7 +117,7 @@ class Job(object):
         if not self.fixture.is_running():
             self.logger.error("%s marked as a failure because the fixture crashed during the test.",
                               test.short_description())
-            test_report.update_fail_test(test.id(), return_code=2)
+            test_report.update_test_failure(test.id(), return_code=2)
             # Always fail fast if the fixture fails.
             raise errors.StopExecution("%s not running after %s" %
                                        (self.fixture, test.short_description()))
@@ -174,18 +174,18 @@ class Job(object):
         except errors.ServerFailure:
             self.logger.exception("%s marked as a failure by a hook's after_test.",
                                   test.short_description())
-            test_report.update_fail_test(test.id(), return_code=2)
+            test_report.update_test_failure(test.id(), return_code=2)
             raise errors.StopExecution("A hook's after_test failed")
 
         except errors.TestFailure:
             self.logger.exception("%s marked as a failure by a hook's after_test.",
                                   test.short_description())
-            test_report.update_fail_test(test.id(), return_code=1)
+            test_report.update_test_failure(test.id(), return_code=1)
             if self.suite_options.fail_fast:
                 raise errors.StopExecution("A hook's after_test failed")
 
         except:
-            test_report.update_error_test(test.id())
+            test_report.update_test_error(test.id())
             raise
 
     @staticmethod
