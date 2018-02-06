@@ -58,15 +58,21 @@ class Hook(object):
 
 
 class TestCaseHook(Hook):
+    """A Hook subclass that runs a dynamic TestCase after tests."""
     REGISTERED_NAME = registry.LEAVE_UNREGISTERED
 
     def __init__(self, hook_logger, fixture, description):
         Hook.__init__(self, hook_logger, fixture, description)
 
     def _should_run_after_test(self):
+        """Indicates if the hook should run after the current test.
+
+        This method returns True and can be overriden by subclasses as necessary.
+        """
         return True
 
     def after_test(self, test, test_report, job_logger):
+        """Creates and runs a TestCase if _should_run_after_test() returns True."""
         if not self._should_run_after_test():
             return
         hook_test_case = self._create_test_case(test)
@@ -76,9 +82,22 @@ class TestCaseHook(Hook):
             raise errors.StopExecution(str(hook_test_case.exception))
 
     def _create_test_case(self, test):
+        """Creates a new TestCase to run after 'test'."""
         test_name = "{}:{}".format(test.short_name(), self.__class__.__name__)
         description = "{0} after running '{1}'".format(self.description, test.short_name())
         return self._create_test_case_impl(test_name, description, test.short_name())
 
     def _create_test_case_impl(self, test_name, description, base_test_name):
+        """Returns a new TestCase instance that will run after the test 'base_test_name'
+
+        This method is to be implemented by subclasses.
+
+        Args:
+            test_name: The new TestCase's name.
+            description: The new TestCase's description.
+            base_test_name: The name of the test the new TestCase will run after.
+
+        Returns:
+            An instance of TestCase.
+        """
         raise NotImplementedError()

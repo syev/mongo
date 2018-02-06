@@ -42,43 +42,39 @@ class BackgroundInitialSync(interface.TestCaseHook):
                 fixture.__class__.__name__))
         description = "Background Initial Sync"
         interface.TestCaseHook.__init__(self, hook_logger, fixture, description)
-        self._use_resync = use_resync
-        self._n = n
-        self._shell_options = shell_options
+        self.use_resync = use_resync
+        self.n = n
+        self.tests_run = 0
+        self.random_restarts = 0
+        self.shell_options = shell_options
 
     def _create_test_case_impl(self, test_name, description, base_test_name):
-        return BackgroundInitialSyncTestCase(test_name, description, base_test_name,
-                                             self.fixture, self._shell_options,
-                                             self._use_resync, self._n)
+        return BackgroundInitialSyncTestCase(test_name, description, base_test_name, self)
 
 
 class BackgroundInitialSyncTestCase(jstest.JSTestCase):
-    def __init__(self, test_name, description, base_test_name,
-                 fixture, shell_options, use_resync=False, n=DEFAULT_N):
+    def __init__(self, test_name, description, base_test_name, hook):
+        assert isinstance(hook, BackgroundInitialSync), "hook must be a BackgroundInitialSync"
         js_filename = os.path.join("jstests", "hooks", "run_initial_sync_node_validation.js")
-        jstest.JSTestCase.__init__(self, js_filename, shell_options=shell_options, test_kind="Hook",
-                                   dynamic=True)
+        jstest.JSTestCase.__init__(self, js_filename, shell_options=hook.shell_options,
+                                   test_kind="Hook", dynamic=True)
         self.test_name = test_name
         self.description = description
         self.base_test_name = base_test_name
 
-        self.fixture = fixture
-        self._use_resync = use_resync
-        self._n = n
-        self._tests_run = 0
-        self._random_restarts = 0
+        self._hook = hook
 
     def run_test(self, test_logger):
-        self._tests_run += 1
+        self._hook.tests_run += 1
         sync_node = self.fixture.get_initial_sync_node()
         sync_node_conn = sync_node.mongo_client()
 
         # If it's been 'n' tests so far, wait for the initial sync node to finish syncing.
-        if self._tests_run >= self._n:
+        if self._hook.tests_run >= self._n:
             test_logger.info("%d tests have been run against the fixture, waiting for initial sync"
                              " node to go into SECONDARY state",
-                             self._tests_run)
-            self._tests_run = 0
+                             self._hook.tests_run)
+            self._hook.tests_run = 0
 
             cmd = bson.SON([("replSetTest", 1),
                             ("waitForMemberState", 2),
@@ -91,7 +87,7 @@ class BackgroundInitialSyncTestCase(jstest.JSTestCase):
         try:
             state = sync_node_conn.admin.command("replSetGetStatus").get("myState")
             if state != 2:
-                if self._tests_run == 0:
+                if self._hook.tests_run == 0:
                     msg = "Initial sync node did not catch up after waiting 20 minutes"
                     test_logger.exception("{0} failed: {1}".format(self.description, msg))
                     raise errors.TestFailure(msg)
@@ -103,12 +99,12 @@ class BackgroundInitialSyncTestCase(jstest.JSTestCase):
 
                 # If we have not restarted initial sync since the last time we ran the data
                 # validation, restart initial sync with a 20% probability.
-                if self._random_restarts < 1 and random.random() < 0.2:
-                    hook_type = "resync" if self._use_resync else "initial sync"
+                if self._hook.random_restarts < 1 and random.random() < 0.2:
+                    hook_type = "resync" if self._hook.use_resync else "initial sync"
                     test_logger.info("randomly restarting " + hook_type +
                                      " in the middle of " + hook_type)
                     self.__restart_init_sync(sync_node, sync_node_conn, test_logger)
-                    self._random_restarts += 1
+                    self._hook.random_restarts += 1
                 return
         except pymongo.errors.OperationFailure:
             # replSetGetStatus can fail if the node is in STARTUP state. The node will soon go into
@@ -118,7 +114,7 @@ class BackgroundInitialSyncTestCase(jstest.JSTestCase):
                 self.base_test_name)
             return
 
-        self._random_restarts = 0
+        self._hook.random_restarts = 0
 
         # Run data validation and dbhash checking.
         jstest.JSTestCase.run_test(self, test_logger)
@@ -128,7 +124,7 @@ class BackgroundInitialSyncTestCase(jstest.JSTestCase):
     # Restarts initial sync by shutting down the node, clearing its data, and restarting it,
     # or by calling resync if use_resync is specified.
     def __restart_init_sync(self, sync_node, sync_node_conn, test_logger):
-        if self._use_resync:
+        if self._hook.use_resync:
             test_logger.info("Calling resync on initial sync node...")
             cmd = bson.SON([("resync", 1), ("wait", 0)])
             sync_node_conn.admin.command(cmd)
@@ -158,7 +154,7 @@ class IntermediateInitialSync(interface.TestCaseHook):
 
         description = "Intermediate Initial Sync"
         interface.TestCaseHook.__init__(self, hook_logger, fixture, description)
-        self._use_resync = use_resync
+        self.use_resync = use_resync
         self._n = n
         self._tests_run = 0
 
@@ -173,13 +169,12 @@ class IntermediateInitialSync(interface.TestCaseHook):
         return True
 
     def _create_test_case_impl(self, test_name, description, base_test_name):
-        return IntermediateInitialSyncTestCase(test_name, description,
-                                               self.fixture, self._use_resync, self._n)
+        return IntermediateInitialSyncTestCase(test_name, description, self)
 
 
 class IntermediateInitialSyncTestCase(jstest.JSTestCase):
-    def __init__(self, test_name, description, base_test_name,
-                 fixture, use_resync=False, n=DEFAULT_N):
+    def __init__(self, test_name, description, base_test_name, hook):
+        assert isinstance(hook, IntermediateInitialSync), "hook must be an IntermediateInitialSync"
         js_filename = os.path.join("jstests", "hooks", "run_initial_sync_node_validation.js")
         jstest.JSTestCase.__init__(self, js_filename, test_kind="Hook", dynamic=True)
 
@@ -187,15 +182,13 @@ class IntermediateInitialSyncTestCase(jstest.JSTestCase):
         self.description = description
         self.base_test_name = base_test_name
 
-        self.fixture = fixture
-        self._use_resync = use_resync
-        self._n = n
+        self._hook = hook
 
     def run_test(self, test_logger):
         sync_node = self.fixture.get_initial_sync_node()
         sync_node_conn = sync_node.mongo_client()
 
-        if self._use_resync:
+        if self._hook.use_resync:
             test_logger.info("Calling resync on initial sync node...")
             cmd = bson.SON([("resync", 1)])
             sync_node_conn.admin.command(cmd)

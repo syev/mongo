@@ -203,8 +203,6 @@ class ReplFixture(Fixture):
                 message = "Write opertion on {} failed: {}".format(
                     self.get_driver_connection_url(), err)
                 raise errors.ServerFailure(message)
-#                 raise errors.ServerFailure("Write opertion on {} failed: {}".format(
-#                     self.get_driver_connection_url(), err))
 
 
 class NoOpFixture(Fixture):

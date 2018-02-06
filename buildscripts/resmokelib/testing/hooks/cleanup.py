@@ -29,38 +29,47 @@ class CleanEveryN(interface.Hook):
                              " the fixture after each test instead of after every %d.", n)
             n = 1
 
-        self.n = n
-        self.tests_run = 0
+        self._n = n
+        self._tests_run = 0
 
     def after_test(self, test, test_report, job_logger):
-        self.tests_run += 1
-        if self.tests_run < self.n:
+        """Restarts the fixture if a sufficient number of tests have run since last restart."""
+        self._tests_run += 1
+        if self._tests_run < self._n:
             return
 
         test_name = "{}:{}".format(test.short_name(), self.__class__.__name__)
-        hook_test_case = CleanEveryNTestCase(test_name, self.fixture, self.tests_run)
+        hook_test_case = CleanEveryNTestCase(test_name, self.fixture, self._tests_run)
 
         hook_test_case.run(job_logger, test_report)
-        self.tests_run = 0
+        self._tests_run = 0
 
         if hook_test_case.return_code != 0:
             raise errors.StopExecution("Encountered an error while restarting the fixture")
 
 
 class CleanEveryNTestCase(testcase.TestCase):
+    """A dynamic TestCase that stops and restarts a fixture."""
     def __init__(self, test_name, fixture, nb_tests_run):
+        """Initializes the CleanEveryNTestCase.
+
+        Args:
+            test_name: The name of this test.
+            fixture: The fixture this test will restart.
+            nb_tests_run: The number of tests that have run before running this test.
+        """
         testcase.TestCase.__init__(self, "Hook", test_name, dynamic=True)
-        self._fixture = fixture
+        self.fixture = fixture
         self._nb_tests_run = nb_tests_run
 
     def run_test(self, test_logger):
         try:
             test_logger.info("%d tests have been run against the fixture, stopping it...",
                              self._nb_tests_run)
-            self._fixture.teardown()
+            self.fixture.teardown()
             test_logger.info("Starting the fixture back up again...")
-            self._fixture.setup()
-            self._fixture.await_ready()
+            self.fixture.setup()
+            self.fixture.await_ready()
             self.return_code = 0
         except Exception as err:
             self.return_code = 2

@@ -57,11 +57,3 @@ class PortAllocationError(ResmokeError):
     ports than were reserved for that job.
     """
     pass
-
-
-# class FixtureError(ResmokeError):
-#     """
-#     Exception that is raised by a suite executor when an error occurs while setting up
-#     or tearing down a fixture.
-#     """
-#     pass

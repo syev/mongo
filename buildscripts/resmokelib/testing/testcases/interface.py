@@ -72,11 +72,8 @@ class TestCase(object):
         self.is_configured = True
         self.fixture = fixture
 
-    def reset(self):
-        self.return_code = None
-        self.exception = None
-
     def run(self, job_logger, test_report):
+        """Runs the test, logs start and stop to job_logger and updates test_report with results."""
         test_logger = None
         try:
             if self.dynamic:
@@ -85,21 +82,17 @@ class TestCase(object):
             else:
                 command = self._as_command(None)
                 job_logger.info("Running %s...\n%s", self.basename(), command)
-            test_logger = job_logger.new_test_logger(self.short_name(), self.basename(),
-                                                     command)
+            test_logger = job_logger.new_test_logger(self.short_name(), self.basename(), command)
             test_report.start_test(self.id(), test_logger.url_endpoint, dynamic=self.dynamic)
             self.run_test(test_logger)
-            # test_report.add_success(self.id())
             test_report.pass_test(self.id(), self.return_code)
         except errors.TestFailure:
-            # test_report.add_failure(self.id())
             test_report.fail_test(self.id(), self.return_code)
             self.exception = sys.exc_info()
         except KeyboardInterrupt:
             # Should not happen as tests are not run in the main thread
             raise
         except:
-            # test_report.add_error(self.id(), sys.exc_info())
             test_report.error_test(self.id(), self.return_code)
             self.exception = sys.exc_info()
         finally:
@@ -113,12 +106,10 @@ class TestCase(object):
                     # want the logs to eventually get flushed.
                     logging.flush.close_later(handler)
 
-    # TODO is it the responsability of run_test to set self.return_code?
-    # Maybe move this notion of return_code to a ProcessTestCase subclass
     def run_test(self, test_logger):
-        """
-        Runs the specified test.
-        """
+        """Runs the test and logs its output to test_logger.
+
+        This method must be implemented by subclasses."""
         raise NotImplementedError("run_test must be implemented by TestCase subclasses")
 
     def _as_command(self, test_logger):
@@ -150,40 +141,3 @@ class TestCase(object):
         test or log the command.
         """
         raise NotImplementedError("_make_process must be implemented by TestCase subclasses")
-
-
-# class DynamicTestCase(TestCase):
-#     def as_command(self):
-#         return "(dynamic test case)"
-#
-#
-# class ProcessTestCase(TestCase):
-#     def as_command(self):
-#         """
-#         Returns the command invocation used to run the test.
-#         """
-#         # TODO maybe we can create the command without making the process object
-#         # or create the process without giving the test_logger
-#         return self._make_process().as_command()
-#
-#     def _execute(self, test_logger, process):
-#         """
-#         Runs the specified process.
-#         """
-#         test_logger.info("Starting %s...\n%s", self.short_description(), process.as_command())
-#
-#         process.start()
-#         test_logger.info("%s started with pid %s.", self.short_description(), process.pid)
-#
-#         self.return_code = process.wait()
-#         if self.return_code != 0:
-#             raise errors.TestFailure("%s failed" % (self.short_description()))
-#
-#         test_logger.info("%s finished.", self.short_description())
-#
-#     def _make_process(self, test_logger):
-#         """
-#         Returns a new Process instance that could be used to run the
-#         test or log the command.
-#         """
-#         raise NotImplementedError("_make_process must be implemented by TestCase subclasses")

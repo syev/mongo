@@ -145,10 +145,6 @@ class ExecutorRootLogger(RootLogger):
         """Create a new child JobLogger."""
         return JobLogger(test_kind, job_num, self, self.fixture_root_logger)
 
-    # def new_testqueue_logger(self, test_kind):
-    #     """Create a new TestQueueLogger that will be a child of the "tests" root logger."""
-    #     return TestQueueLogger(test_kind, self.tests_root_logger)
-
     def new_hook_logger(self, hook_class, fixture_logger):
         """Create a new child hook logger."""
         return HookLogger(hook_class, fixture_logger, self.tests_root_logger)
@@ -303,16 +299,6 @@ class TestsRootLogger(RootLogger):
         :param build_logger_server: the build logger server, if one is configured.
         """
         RootLogger.__init__(self, TESTS_LOGGER_NAME, logging_config, build_logger_server)
-
-
-# class TestQueueLogger(BaseLogger):
-#     def __init__(self, test_kind, tests_root_logger):
-#         """Initialize a TestQueueLogger.
-#
-#         :param test_kind: the test kind (e.g. js_test, db_test, cpp_unit_test, etc.).
-#         :param tests_root_logger: the root logger for the tests logs.
-#         """
-#         BaseLogger.__init__(self, test_kind, parent=tests_root_logger)
 
 
 class HookLogger(BaseLogger):
