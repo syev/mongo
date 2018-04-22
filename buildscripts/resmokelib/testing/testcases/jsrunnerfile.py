@@ -2,11 +2,11 @@
 
 from __future__ import absolute_import
 
-from buildscripts.resmokelib import config
-from buildscripts.resmokelib import core
-from buildscripts.resmokelib import utils
-from buildscripts.resmokelib.testing.testcases import interface
-from buildscripts.resmokelib.utils import registry
+from resmokelib import config
+from resmokelib import core
+from resmokelib import utils
+from resmokelib.testing.testcases import interface
+from resmokelib.utils import registry
 
 
 class JSRunnerFileTestCase(interface.ProcessTestCase):

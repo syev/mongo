@@ -4,15 +4,9 @@
 from __future__ import absolute_import
 
 import collections
-import os.path
-import sys
 
-# Get relative imports to work when the package is not installed on the PYTHONPATH.
-if __name__ == "__main__" and __package__ is None:
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from buildscripts import resmoke  # pylint: disable=wrong-import-position
-from buildscripts import resmokelib  # pylint: disable=wrong-import-position
+import resmoke
+import resmokelib
 
 _TagInfo = collections.namedtuple("_TagInfo", ["tag_name", "evergreen_aware", "suite_options"])
 

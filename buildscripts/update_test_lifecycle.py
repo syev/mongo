@@ -123,7 +123,7 @@ def create_batch_groups(test_groups, batch_size):
 
 
 class TestHistorySource(object):
-    """A class used to parallelize requests to buildscripts.test_failures.TestHistory."""
+    """A class used to parallelize requests to test_failures.TestHistory."""
 
     def __init__(  # pylint: disable=too-many-arguments
             self, project, variants, distros, start_revision, end_revision,

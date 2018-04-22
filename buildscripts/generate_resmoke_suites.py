@@ -9,20 +9,18 @@ to attempt to keep the task runtime under a specified amount.
 from __future__ import absolute_import
 
 import argparse
+from collections import defaultdict
+from collections import namedtuple
 import datetime
 import itertools
 import logging
+from operator import itemgetter
 import os
 import sys
-
-from collections import defaultdict
-from collections import namedtuple
-from operator import itemgetter
 
 from jinja2 import Template
 
 from client.github import GithubApi
-
 import client.evergreen as evergreen
 import util.testname as testname
 import util.time as timeutil

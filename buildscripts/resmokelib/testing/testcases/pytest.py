@@ -2,7 +2,7 @@
 import os
 import unittest
 
-from buildscripts.resmokelib.testing.testcases import interface
+from resmokelib.testing.testcases import interface
 
 
 class PyTestCase(interface.TestCase):

@@ -8,7 +8,7 @@ import unittest
 
 import mock
 
-import buildscripts.resmokelib.testing.hooks.combine_benchmark_results as cbr
+import resmokelib.testing.hooks.combine_benchmark_results as cbr
 
 # pylint: disable=missing-docstring,protected-access
 
@@ -61,7 +61,7 @@ class CombineBenchmarkResultsFixture(unittest.TestCase):
 
     # Mock the hook's parent class because we're testing only functionality of this hook and
     # not anything related to or inherit from the parent class.
-    @mock.patch("buildscripts.resmokelib.testing.hooks.interface.Hook", autospec=True)
+    @mock.patch("resmokelib.testing.hooks.interface.Hook", autospec=True)
     def setUp(self, MockHook):  # pylint: disable=arguments-differ,unused-argument
         self.bm_threads_report = cbr._BenchmarkThreadsReport(_BM_CONTEXT)
 

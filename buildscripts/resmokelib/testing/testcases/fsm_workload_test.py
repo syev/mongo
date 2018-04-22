@@ -2,7 +2,7 @@
 
 from __future__ import absolute_import
 
-from buildscripts.resmokelib.testing.testcases import jsrunnerfile
+from resmokelib.testing.testcases import jsrunnerfile
 
 
 class FSMWorkloadTestCase(jsrunnerfile.JSRunnerFileTestCase):

@@ -1,11 +1,11 @@
-"""Unit tests for the buildscripts.git module."""
+"""Unit tests for the git module."""
 
 from __future__ import absolute_import
 
 import subprocess
 import unittest
 
-import buildscripts.git as _git
+import git as _git
 
 # pylint: disable=missing-docstring,protected-access
 

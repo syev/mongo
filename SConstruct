@@ -30,8 +30,8 @@ import mongo.generators as mongo_generators
 EnsurePythonVersion(2, 7)
 EnsureSConsVersion(2, 5)
 
-from buildscripts import utils
-from buildscripts import moduleconfig
+import utils
+import moduleconfig
 
 import libdeps
 
@@ -3257,7 +3257,7 @@ if incremental_link.exists(env):
     incremental_link(env)
 
 def checkErrorCodes():
-    import buildscripts.errorcodes as x
+    import errorcodes as x
     if x.check_error_codes() == False:
         env.FatalError("next id to use: {0}", x.get_next_code())
 
@@ -3275,19 +3275,19 @@ env.AddMethod(env_windows_resource_file, 'WindowsResourceFile')
 # --- lint ----
 
 def doLint( env , target , source ):
-    import buildscripts.eslint
-    if not buildscripts.eslint.lint(None, dirmode=True, glob=["jstests/", "src/mongo/"]):
+    import eslint
+    if not eslint.lint(None, dirmode=True, glob=["jstests/", "src/mongo/"]):
         raise Exception("ESLint errors")
 
-    import buildscripts.clang_format
-    if not buildscripts.clang_format.lint_all(None):
+    import clang_format
+    if not clang_format.lint_all(None):
         raise Exception("clang-format lint errors")
 
-    import buildscripts.pylinters
-    buildscripts.pylinters.lint_all(None, {}, [])
+    import pylinters
+    pylinters.lint_all(None, {}, [])
 
-    import buildscripts.lint
-    if not buildscripts.lint.run_lint( [ "src/mongo/" ] ):
+    import lint
+    if not lint.run_lint( [ "src/mongo/" ] ):
         raise Exception( "lint errors" )
 
 env.Alias( "lint" , [] , [ doLint ] )

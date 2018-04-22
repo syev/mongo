@@ -2,8 +2,8 @@
 import logging
 import unittest
 
-from buildscripts.resmokelib import errors
-from buildscripts.resmokelib.testing.fixtures import interface
+from resmokelib import errors
+from resmokelib.testing.fixtures import interface
 
 # pylint: disable=missing-docstring,protected-access
 

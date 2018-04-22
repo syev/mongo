@@ -1,13 +1,11 @@
-"""
-Tests for buildscripts/test_failures.py.
-"""
+"""Unit tests for the lifecycle_test_failures module."""
 
 from __future__ import absolute_import
 
 import datetime
 import unittest
 
-from buildscripts import lifecycle_test_failures as test_failures
+import lifecycle_test_failures as test_failures
 
 # pylint: disable=invalid-name,missing-docstring,protected-access
 

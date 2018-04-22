@@ -1,10 +1,10 @@
-"""Unit tests for the buildscripts.ciconfig.tags module."""
+"""Unit tests for the ciconfig.tags module."""
 from __future__ import absolute_import
 
 import os
 import unittest
 
-import buildscripts.ciconfig.tags as _tags
+import ciconfig.tags as _tags
 
 # pylint: disable=missing-docstring,protected-access
 

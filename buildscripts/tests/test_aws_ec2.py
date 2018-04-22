@@ -5,7 +5,7 @@ from __future__ import absolute_import
 import datetime
 import unittest
 
-from buildscripts import aws_ec2
+import aws_ec2
 
 # pylint: disable=invalid-name,missing-docstring,protected-access
 

@@ -9,9 +9,9 @@ import copy
 import datetime
 import unittest
 
-from buildscripts import lifecycle_test_failures as test_failures
-from buildscripts import update_test_lifecycle
-from buildscripts.ciconfig import tags as ci_tags
+from ciconfig import tags as ci_tags
+import lifecycle_test_failures as test_failures
+import update_test_lifecycle
 
 # pylint: disable=invalid-name,missing-docstring,protected-access,too-many-lines
 

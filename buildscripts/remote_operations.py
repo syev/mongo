@@ -25,10 +25,6 @@ if os.name == "posix" and sys.version_info[0] == 2:
 else:
     import subprocess
 
-# Get relative imports to work when the package is not installed on the PYTHONPATH.
-if __name__ == "__main__" and __package__ is None:
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 _IS_WINDOWS = sys.platform == "win32" or sys.platform == "cygwin"
 
 _OPERATIONS = ["shell", "copy_to", "copy_from"]

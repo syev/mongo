@@ -7,8 +7,8 @@ import collections
 import datetime
 import json
 
-from buildscripts.resmokelib import config as _config
-from buildscripts.resmokelib.testing.hooks import interface
+from resmokelib import config as _config
+from resmokelib.testing.hooks import interface
 
 
 class CombineBenchmarkResults(interface.Hook):

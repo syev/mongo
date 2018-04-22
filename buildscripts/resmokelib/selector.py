@@ -13,12 +13,12 @@ import os.path
 import subprocess
 import sys
 
-import buildscripts.ciconfig.tags as _tags
-from . import config
-from . import errors
-from . import utils
-from .utils import globstar
-from .utils import jscomment
+import ciconfig.tags as _tags
+from resmokelib import config
+from resmokelib import errors
+from resmokelib import utils
+from resmokelib.utils import globstar
+from resmokelib.utils import jscomment
 
 ########################
 #  Test file explorer  #
@@ -35,7 +35,7 @@ class TestFileExplorer(object):
     def is_glob_pattern(path):
         """Indicate if the provided path is a glob pattern.
 
-        See buildscripts.resmokelib.utils.globstar.is_glob_pattern().
+        See resmokelib.utils.globstar.is_glob_pattern().
         """
         return globstar.is_glob_pattern(path)
 
@@ -43,7 +43,7 @@ class TestFileExplorer(object):
     def iglob(pattern):  # noqa: D406,D407,D411,D413
         """Expand the given glob pattern with regard to the current working directory.
 
-        See buildscripts.resmokelib.utils.globstar.iglob().
+        See resmokelib.utils.globstar.iglob().
         Returns:
             A list of paths as a list(str).
         """
@@ -53,7 +53,7 @@ class TestFileExplorer(object):
     def jstest_tags(file_path):  # noqa: D406,D407,D411,D413
         """Extract the tags from a JavaScript test file.
 
-        See buildscripts.resmokelib.utils.jscomment.get_tags().
+        See resmokelib.utils.jscomment.get_tags().
         Returns:
             A list of tags.
         """
@@ -79,7 +79,7 @@ class TestFileExplorer(object):
     def fnmatchcase(name, pattern):
         """Indicate if the given name matches the given pattern.
 
-        See buildscripts.resmokelib.utils.fnmatch.fnmatchcase().
+        See resmokelib.utils.fnmatch.fnmatchcase().
         """
         return fnmatch.fnmatchcase(name, pattern)
 

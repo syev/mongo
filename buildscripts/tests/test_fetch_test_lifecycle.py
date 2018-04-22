@@ -3,7 +3,7 @@ from __future__ import absolute_import
 
 import unittest
 
-import buildscripts.fetch_test_lifecycle as fetch
+import fetch_test_lifecycle as fetch
 
 # pylint: disable=missing-docstring,protected-access
 

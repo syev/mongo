@@ -12,7 +12,7 @@ import tempfile
 import time
 import unittest
 
-from buildscripts import remote_operations as rop
+import remote_operations as rop
 
 # pylint: disable=invalid-name,missing-docstring,protected-access
 

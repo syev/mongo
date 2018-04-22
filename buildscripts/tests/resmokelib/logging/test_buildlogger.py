@@ -1,11 +1,11 @@
-"""Unit tests for the buildscripts.resmokelib.logging.buildlogger module."""
+"""Unit tests for the resmokelib.logging.buildlogger module."""
 
 from __future__ import absolute_import
 
 import json
 import unittest
 
-from buildscripts.resmokelib.logging import buildlogger
+from resmokelib.logging import buildlogger
 
 # pylint: disable=missing-docstring,protected-access
 

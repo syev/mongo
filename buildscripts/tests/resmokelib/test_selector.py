@@ -1,14 +1,13 @@
-"""Unit tests for the buildscripts.resmokelib.selector module."""
+"""Unit tests for the resmokelib.selector module."""
 
 from __future__ import absolute_import
 
 import fnmatch
 import unittest
 
-import buildscripts.resmokelib.selector as selector
-import buildscripts.resmokelib.utils.globstar as globstar
-import buildscripts.resmokelib.config
-import buildscripts.resmokeconfig
+import resmokelib.selector as selector
+import resmokelib.utils.globstar as globstar
+import resmokelib.config
 
 # pylint: disable=missing-docstring,protected-access
 
@@ -417,7 +416,7 @@ class TestFilterTests(unittest.TestCase):
         self.assertEqual([], excluded)
 
     def test_cpp_with_any_tags(self):
-        buildscripts.resmokelib.config.INCLUDE_WITH_ANY_TAGS = ["tag1"]
+        resmokelib.config.INCLUDE_WITH_ANY_TAGS = ["tag1"]
         try:
             selector_config = {"root": "unittest.txt"}
             selected, excluded = selector.filter_tests("cpp_unit_test", selector_config,
@@ -425,7 +424,7 @@ class TestFilterTests(unittest.TestCase):
             self.assertEqual([], selected)
             self.assertEqual(["build/testA", "build/testB"], excluded)
         finally:
-            buildscripts.resmokelib.config.INCLUDE_WITH_ANY_TAGS = None
+            resmokelib.config.INCLUDE_WITH_ANY_TAGS = None
 
     def test_jstest_include_tags(self):
         config = {

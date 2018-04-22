@@ -2,10 +2,7 @@
 
 from __future__ import absolute_import
 
-from buildscripts.resmokelib import config
-from buildscripts.resmokelib import core
-from buildscripts.resmokelib import utils
-from buildscripts.resmokelib.testing.testcases import jsrunnerfile
+from resmokelib.testing.testcases import jsrunnerfile
 
 
 class JSONSchemaTestCase(jsrunnerfile.JSRunnerFileTestCase):

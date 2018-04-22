@@ -89,8 +89,8 @@ def _try_import(module, name=None):
 
 
 # These modules are used on the 'client' side.
-_try_import("buildscripts.aws_ec2", "aws_ec2")
-_try_import("buildscripts.remote_operations", "remote_operations")
+_try_import("aws_ec2", "aws_ec2")
+_try_import("remote_operations", "remote_operations")
 
 if _IS_WINDOWS:
 

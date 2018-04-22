@@ -5,15 +5,15 @@ from __future__ import absolute_import
 import datetime
 import unittest
 
-from mock import patch, Mock
+from mock import patch
 
-from buildscripts import generate_resmoke_suites as grs
+import generate_resmoke_suites as grs
 
 # pylint: disable=missing-docstring,invalid-name,unused-argument,no-self-use
 
 
 class GetStartAndEndCommitSinceDateTest(unittest.TestCase):
-    @patch('buildscripts.client.github.GithubApi')
+    @patch('client.github.GithubApi')
     def test_that_first_and_last_commits_returned(self, GithubApi):
         GithubApi.get_commits.return_value = [
             {"sha": "first"},
@@ -32,7 +32,7 @@ class GetStartAndEndCommitSinceDateTest(unittest.TestCase):
 
 
 class GetHistoryByRevisionTest(unittest.TestCase):
-    @patch('buildscripts.client.evergreen.EvergreenApi')
+    @patch('client.evergreen.EvergreenApi')
     def test_get_history_by_revision_call_evergreen(self, EvergreenApi):
         grs.get_history_by_revision(EvergreenApi, '', grs.CommitRange('start', 'end'), '', None)
 
@@ -40,7 +40,7 @@ class GetHistoryByRevisionTest(unittest.TestCase):
 
 
 class GetTestHistoryTest(unittest.TestCase):
-    @patch('buildscripts.client.evergreen.EvergreenApi')
+    @patch('client.evergreen.EvergreenApi')
     def test_get_test_history_returns_when_the_end_revision_is_given(self, EvergreenApi):
         def get_history_mock(project, params):
             return [{"revision": "end"}]
@@ -49,7 +49,7 @@ class GetTestHistoryTest(unittest.TestCase):
         grs.get_test_history(EvergreenApi, grs.ProjectTarget('', '', ''), '',
                              grs.CommitRange('start', 'end'), None)
 
-    @patch('buildscripts.client.evergreen.EvergreenApi')
+    @patch('client.evergreen.EvergreenApi')
     def test_get_test_history_can_be_called_multiple_times(self, EvergreenApi):
         call_data = {"count": 0}
 
@@ -250,7 +250,7 @@ class OrganizeExecutionsByTestTest(unittest.TestCase):
 
         self.assertEquals(len(tests), 0)
 
-    @patch("buildscripts.generate_resmoke_suites.os")
+    @patch("generate_resmoke_suites.os")
     def test_only_test_executions(self, os):
         os.path.isfile.return_value = True
 
@@ -278,7 +278,7 @@ class OrganizeExecutionsByTestTest(unittest.TestCase):
         self.assertEquals(tests["test2.js"]["variant1"], 2)
         self.assertEquals(tests["test3.js"]["variant1"], 3)
 
-    @patch("buildscripts.generate_resmoke_suites.os")
+    @patch("generate_resmoke_suites.os")
     def test_mix_of_test_and_hook_executions(self, os):
         os.path.isfile.return_value = True
 
@@ -322,7 +322,7 @@ class OrganizeExecutionsByTestTest(unittest.TestCase):
         self.assertEquals(tests["test2.js"]["variant1"], 2)
         self.assertEquals(tests["test3.js"]["variant1"], 6)
 
-    @patch("buildscripts.generate_resmoke_suites.os")
+    @patch("generate_resmoke_suites.os")
     def test_multiple_revisions_for_same_test(self, os):
         os.path.isfile.return_value = True
 
@@ -372,7 +372,7 @@ class OrganizeExecutionsByTestTest(unittest.TestCase):
         self.assertEquals(tests["test2.js"]["variant1"], 2)
         self.assertEquals(tests["test3.js"]["variant1"], 3)
 
-    @patch("buildscripts.generate_resmoke_suites.os")
+    @patch("generate_resmoke_suites.os")
     def test_non_files_are_not_included(self, os):
         os.path.isfile.return_value = False
 

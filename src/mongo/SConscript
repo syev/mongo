@@ -6,7 +6,8 @@ import itertools
 import os
 import re
 import sys
-from buildscripts import utils
+
+import utils
 
 Import("env")
 Import("has_option")
