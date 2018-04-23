@@ -27,15 +27,9 @@ from __future__ import absolute_import, print_function, unicode_literals
 import os
 import unittest
 
-# import package so that it works regardless of whether we run as a module or file
-if __package__ is None:
-    import sys
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-    from context import idl
-    import testcase
-else:
-    from .context import idl
-    from . import testcase
+
+from idl.idl import compiler
+from idl.tests import testcase
 
 
 class TestGenerator(testcase.IDLTestcase):
@@ -52,7 +46,7 @@ class TestGenerator(testcase.IDLTestcase):
         )
         idl_dir = os.path.join(src_dir, 'mongo', 'idl')
 
-        args = idl.compiler.CompilerArgs()
+        args = compiler.CompilerArgs()
         args.output_suffix = "_codecoverage_gen"
         args.import_directories = [src_dir]
 
@@ -63,10 +57,10 @@ class TestGenerator(testcase.IDLTestcase):
             return
 
         args.input_file = os.path.join(idl_dir, 'unittest_import.idl')
-        self.assertTrue(idl.compiler.compile_idl(args))
+        self.assertTrue(compiler.compile_idl(args))
 
         args.input_file = unittest_idl_file
-        self.assertTrue(idl.compiler.compile_idl(args))
+        self.assertTrue(compiler.compile_idl(args))
 
     def test_enum_non_const(self):
         # type: () -> None

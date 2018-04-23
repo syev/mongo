@@ -16,6 +16,7 @@ class PyTestCase(interface.TestCase):
 
     def run_test(self):
         """Execute the test."""
+        self.logger.info("test_module_name: %s", self.test_module_name)
         suite = unittest.defaultTestLoader.loadTestsFromName(self.test_module_name)
         result = unittest.TextTestRunner().run(suite)
         if not result.wasSuccessful():
@@ -31,4 +32,4 @@ class PyTestCase(interface.TestCase):
     @property
     def test_module_name(self):
         """Get the dotted module name from the path."""
-        return os.path.splitext(self.test_name)[0].replace(os.sep, ".")
+        return os.path.splitext(self.test_name)[0].replace("buildscripts/", "").replace(os.sep, ".")

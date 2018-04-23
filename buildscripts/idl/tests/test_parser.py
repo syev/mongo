@@ -21,16 +21,8 @@ from __future__ import absolute_import, print_function, unicode_literals
 import textwrap
 import unittest
 
-# import package so that it works regardless of whether we run as a module or file
-if __package__ is None:
-    import sys
-    from os import path
-    sys.path.append(path.dirname(path.abspath(__file__)))
-    from context import idl
-    import testcase
-else:
-    from .context import idl
-    from . import testcase
+from idl.idl import errors
+from idl.tests import testcase
 
 
 class TestParser(testcase.IDLTestcase):
@@ -49,7 +41,7 @@ class TestParser(testcase.IDLTestcase):
             textwrap.dedent("""
         fake:
             cpp_namespace: 'foo'
-            """), idl.errors.ERROR_ID_UNKNOWN_ROOT)
+            """), errors.ERROR_ID_UNKNOWN_ROOT)
 
     def test_global_positive(self):
         # type: () -> None
@@ -80,7 +72,7 @@ class TestParser(testcase.IDLTestcase):
         self.assert_parse_fail(
             textwrap.dedent("""
         global: foo
-            """), idl.errors.ERROR_ID_IS_NODE_TYPE)
+            """), errors.ERROR_ID_IS_NODE_TYPE)
 
         # Duplicate globals
         self.assert_parse_fail(
@@ -89,21 +81,21 @@ class TestParser(testcase.IDLTestcase):
             cpp_namespace: 'foo'
         global:
             cpp_namespace: 'bar'
-            """), idl.errors.ERROR_ID_DUPLICATE_NODE)
+            """), errors.ERROR_ID_DUPLICATE_NODE)
 
         # Duplicate cpp_namespace
         self.assert_parse_fail(
             textwrap.dedent("""
         global:
             cpp_namespace: 'foo'
-            cpp_namespace: 'foo'"""), idl.errors.ERROR_ID_DUPLICATE_NODE)
+            cpp_namespace: 'foo'"""), errors.ERROR_ID_DUPLICATE_NODE)
 
         # Duplicate cpp_includes
         self.assert_parse_fail(
             textwrap.dedent("""
         global:
             cpp_includes: 'foo'
-            cpp_includes: 'foo'"""), idl.errors.ERROR_ID_DUPLICATE_NODE)
+            cpp_includes: 'foo'"""), errors.ERROR_ID_DUPLICATE_NODE)
 
         # cpp_namespace as a sequence
         self.assert_parse_fail(
@@ -111,35 +103,35 @@ class TestParser(testcase.IDLTestcase):
         global:
             cpp_namespace:
                 - 'foo'
-                - 'bar'"""), idl.errors.ERROR_ID_IS_NODE_TYPE)
+                - 'bar'"""), errors.ERROR_ID_IS_NODE_TYPE)
 
         # cpp_namespace as a map
         self.assert_parse_fail(
             textwrap.dedent("""
         global:
             cpp_namespace:
-                name: 'foo'"""), idl.errors.ERROR_ID_IS_NODE_TYPE)
+                name: 'foo'"""), errors.ERROR_ID_IS_NODE_TYPE)
 
         # cpp_includes as a map
         self.assert_parse_fail(
             textwrap.dedent("""
         global:
             cpp_includes:
-                inc1: 'foo'"""), idl.errors.ERROR_ID_IS_NODE_TYPE_SCALAR_OR_SEQUENCE)
+                inc1: 'foo'"""), errors.ERROR_ID_IS_NODE_TYPE_SCALAR_OR_SEQUENCE)
 
         # cpp_includes as a sequence of tuples
         self.assert_parse_fail(
             textwrap.dedent("""
         global:
             cpp_includes:
-               - inc1: 'foo'"""), idl.errors.ERROR_ID_IS_NODE_TYPE)
+               - inc1: 'foo'"""), errors.ERROR_ID_IS_NODE_TYPE)
 
         # Unknown scalar
         self.assert_parse_fail(
             textwrap.dedent("""
         global:
             bar: 'foo'
-            """), idl.errors.ERROR_ID_UNKNOWN_NODE)
+            """), errors.ERROR_ID_UNKNOWN_NODE)
 
     def test_type_positive(self):
         # type: () -> None
@@ -188,13 +180,13 @@ class TestParser(testcase.IDLTestcase):
                 description: test
                 cpp_type: foo
                 bson_serialization_type: int
-                """), idl.errors.ERROR_ID_DUPLICATE_NODE)
+                """), errors.ERROR_ID_DUPLICATE_NODE)
 
         # Test scalar fails
         self.assert_parse_fail(
             textwrap.dedent("""
             types:
-                foo: 'bar'"""), idl.errors.ERROR_ID_IS_NODE_TYPE)
+                foo: 'bar'"""), errors.ERROR_ID_IS_NODE_TYPE)
 
         # Test unknown field
         self.assert_parse_fail(
@@ -205,7 +197,7 @@ class TestParser(testcase.IDLTestcase):
                 description: test
                 cpp_type: foo
                 bson_serialization_type:
-                """), idl.errors.ERROR_ID_UNKNOWN_NODE)
+                """), errors.ERROR_ID_UNKNOWN_NODE)
 
         # test duplicate field
         self.assert_parse_fail(
@@ -216,14 +208,14 @@ class TestParser(testcase.IDLTestcase):
                 description: test
                 cpp_type: foo
                 bson_serialization_type:
-                """), idl.errors.ERROR_ID_DUPLICATE_NODE)
+                """), errors.ERROR_ID_DUPLICATE_NODE)
 
         # test list instead of scalar
         self.assert_parse_fail(
             textwrap.dedent("""
         types:
             - foo:
-            """), idl.errors.ERROR_ID_IS_NODE_TYPE, multiple=True)
+            """), errors.ERROR_ID_IS_NODE_TYPE, multiple=True)
 
         # test list instead of scalar
         self.assert_parse_fail(
@@ -231,7 +223,7 @@ class TestParser(testcase.IDLTestcase):
         types:
             foo:
                 - bar
-            """), idl.errors.ERROR_ID_IS_NODE_TYPE, multiple=True)
+            """), errors.ERROR_ID_IS_NODE_TYPE, multiple=True)
 
         # test map instead of scalar
         self.assert_parse_fail(
@@ -240,7 +232,7 @@ class TestParser(testcase.IDLTestcase):
             foo:
                 description:
                     foo: bar
-            """), idl.errors.ERROR_ID_IS_NODE_TYPE, multiple=True)
+            """), errors.ERROR_ID_IS_NODE_TYPE, multiple=True)
 
         # test missing bson_serialization_type field
         self.assert_parse_fail(
@@ -249,7 +241,7 @@ class TestParser(testcase.IDLTestcase):
             foo:
                 description: foo
                 cpp_type: foo
-            """), idl.errors.ERROR_ID_MISSING_REQUIRED_FIELD)
+            """), errors.ERROR_ID_MISSING_REQUIRED_FIELD)
 
         # test missing cpp_type field
         self.assert_parse_fail(
@@ -258,7 +250,7 @@ class TestParser(testcase.IDLTestcase):
             foo:
                 description: foo
                 bson_serialization_type: foo
-            """), idl.errors.ERROR_ID_MISSING_REQUIRED_FIELD)
+            """), errors.ERROR_ID_MISSING_REQUIRED_FIELD)
 
     def test_struct_positive(self):
         # type: () -> None
@@ -301,7 +293,7 @@ class TestParser(testcase.IDLTestcase):
             textwrap.dedent("""
         structs:
             foo: foo
-            """), idl.errors.ERROR_ID_IS_NODE_TYPE)
+            """), errors.ERROR_ID_IS_NODE_TYPE)
 
         # Missing fields
         self.assert_parse_fail(
@@ -310,7 +302,7 @@ class TestParser(testcase.IDLTestcase):
             foo:
                 description: foo
                 strict: true
-            """), idl.errors.ERROR_ID_EMPTY_FIELDS)
+            """), errors.ERROR_ID_EMPTY_FIELDS)
 
         # unknown field
         self.assert_parse_fail(
@@ -321,7 +313,7 @@ class TestParser(testcase.IDLTestcase):
                 foo: bar
                 fields:
                     foo: bar
-            """), idl.errors.ERROR_ID_UNKNOWN_NODE)
+            """), errors.ERROR_ID_UNKNOWN_NODE)
 
         # strict is a bool
         self.assert_parse_fail(
@@ -332,7 +324,7 @@ class TestParser(testcase.IDLTestcase):
                 strict: bar
                 fields:
                     foo: bar
-            """), idl.errors.ERROR_ID_IS_NODE_VALID_BOOL)
+            """), errors.ERROR_ID_IS_NODE_VALID_BOOL)
 
         # immutable is a bool
         self.assert_parse_fail(
@@ -343,7 +335,7 @@ class TestParser(testcase.IDLTestcase):
                 immutable: bar
                 fields:
                     foo: bar
-            """), idl.errors.ERROR_ID_IS_NODE_VALID_BOOL)
+            """), errors.ERROR_ID_IS_NODE_VALID_BOOL)
 
         # inline_chained_structs is a bool
         self.assert_parse_fail(
@@ -354,7 +346,7 @@ class TestParser(testcase.IDLTestcase):
                 inline_chained_structs: bar
                 fields:
                     foo: bar
-            """), idl.errors.ERROR_ID_IS_NODE_VALID_BOOL)
+            """), errors.ERROR_ID_IS_NODE_VALID_BOOL)
 
         # generate_comparison_operators is a bool
         self.assert_parse_fail(
@@ -365,7 +357,7 @@ class TestParser(testcase.IDLTestcase):
                 generate_comparison_operators: bar
                 fields:
                     foo: bar
-            """), idl.errors.ERROR_ID_IS_NODE_VALID_BOOL)
+            """), errors.ERROR_ID_IS_NODE_VALID_BOOL)
 
         # cpp_name is not allowed
         self.assert_parse_fail(
@@ -376,7 +368,7 @@ class TestParser(testcase.IDLTestcase):
                 cpp_name: bar
                 fields:
                     foo: bar
-            """), idl.errors.ERROR_ID_UNKNOWN_NODE)
+            """), errors.ERROR_ID_UNKNOWN_NODE)
 
     def test_field_positive(self):
         # type: () -> None
@@ -436,7 +428,7 @@ class TestParser(testcase.IDLTestcase):
                 fields:
                     foo: short
                     foo: int
-            """), idl.errors.ERROR_ID_DUPLICATE_NODE)
+            """), errors.ERROR_ID_DUPLICATE_NODE)
 
         # Test bad bool
         self.assert_parse_fail(
@@ -449,7 +441,7 @@ class TestParser(testcase.IDLTestcase):
                     foo:
                         type: string
                         optional: bar
-            """), idl.errors.ERROR_ID_IS_NODE_VALID_BOOL)
+            """), errors.ERROR_ID_IS_NODE_VALID_BOOL)
 
         # Test bad bool
         self.assert_parse_fail(
@@ -462,7 +454,7 @@ class TestParser(testcase.IDLTestcase):
                     foo:
                         type: string
                         ignore: bar
-            """), idl.errors.ERROR_ID_IS_NODE_VALID_BOOL)
+            """), errors.ERROR_ID_IS_NODE_VALID_BOOL)
 
         # Test bad int scalar
         self.assert_parse_fail(
@@ -477,7 +469,7 @@ class TestParser(testcase.IDLTestcase):
                         comparison_order:
                             - a
                             - b
-            """), idl.errors.ERROR_ID_IS_NODE_TYPE)
+            """), errors.ERROR_ID_IS_NODE_TYPE)
 
         # Test bad int
         self.assert_parse_fail(
@@ -490,7 +482,7 @@ class TestParser(testcase.IDLTestcase):
                     foo:
                         type: string
                         comparison_order: 3.14159
-            """), idl.errors.ERROR_ID_IS_NODE_VALID_INT)
+            """), errors.ERROR_ID_IS_NODE_VALID_INT)
 
         # Test bad negative int
         self.assert_parse_fail(
@@ -503,7 +495,7 @@ class TestParser(testcase.IDLTestcase):
                     foo:
                         type: string
                         comparison_order: -1
-            """), idl.errors.ERROR_ID_IS_NODE_VALID_NON_NEGATIVE_INT)
+            """), errors.ERROR_ID_IS_NODE_VALID_NON_NEGATIVE_INT)
 
     def test_name_collisions_negative(self):
         # type: () -> None
@@ -526,7 +518,7 @@ class TestParser(testcase.IDLTestcase):
                 strict: true
                 fields:
                     foo: string
-            """), idl.errors.ERROR_ID_DUPLICATE_SYMBOL)
+            """), errors.ERROR_ID_DUPLICATE_SYMBOL)
 
         # Type after struct
         self.assert_parse_fail(
@@ -546,7 +538,7 @@ class TestParser(testcase.IDLTestcase):
                 serializer: foo
                 deserializer: foo
                 default: foo
-            """), idl.errors.ERROR_ID_DUPLICATE_SYMBOL)
+            """), errors.ERROR_ID_DUPLICATE_SYMBOL)
 
     def test_chained_type_positive(self):
         # type: () -> None
@@ -572,7 +564,7 @@ class TestParser(testcase.IDLTestcase):
                 chained_types: foo1
                 fields:
                     foo: bar
-        """), idl.errors.ERROR_ID_IS_NODE_TYPE)
+        """), errors.ERROR_ID_IS_NODE_TYPE)
 
         self.assert_parse_fail(
             textwrap.dedent("""
@@ -583,7 +575,7 @@ class TestParser(testcase.IDLTestcase):
                     - foo1
                 fields:
                     foo: bar
-        """), idl.errors.ERROR_ID_IS_NODE_TYPE)
+        """), errors.ERROR_ID_IS_NODE_TYPE)
 
         # Duplicate chained types
         self.assert_parse_fail(
@@ -595,7 +587,7 @@ class TestParser(testcase.IDLTestcase):
                 chained_types:
                     foo1: alias
                     foo1: alias
-        """), idl.errors.ERROR_ID_DUPLICATE_NODE)
+        """), errors.ERROR_ID_DUPLICATE_NODE)
 
     def test_chained_struct_positive(self):
         # type: () -> None
@@ -621,7 +613,7 @@ class TestParser(testcase.IDLTestcase):
                 chained_structs: foo1
                 fields:
                     foo: bar
-        """), idl.errors.ERROR_ID_IS_NODE_TYPE)
+        """), errors.ERROR_ID_IS_NODE_TYPE)
 
         self.assert_parse_fail(
             textwrap.dedent("""
@@ -632,7 +624,7 @@ class TestParser(testcase.IDLTestcase):
                     - foo1
                 fields:
                     foo: bar
-        """), idl.errors.ERROR_ID_IS_NODE_TYPE)
+        """), errors.ERROR_ID_IS_NODE_TYPE)
 
         # Duplicate chained structs
         self.assert_parse_fail(
@@ -644,7 +636,7 @@ class TestParser(testcase.IDLTestcase):
                 chained_structs:
                     chained: alias
                     chained: alias
-        """), idl.errors.ERROR_ID_DUPLICATE_NODE)
+        """), errors.ERROR_ID_DUPLICATE_NODE)
 
     def test_enum_positive(self):
         # type: () -> None
@@ -680,13 +672,13 @@ class TestParser(testcase.IDLTestcase):
                 type: int
                 values:
                     v1: 0
-                """), idl.errors.ERROR_ID_DUPLICATE_SYMBOL)
+                """), errors.ERROR_ID_DUPLICATE_SYMBOL)
 
         # Test scalar fails
         self.assert_parse_fail(
             textwrap.dedent("""
             enums:
-                foo: 'bar'"""), idl.errors.ERROR_ID_IS_NODE_TYPE)
+                foo: 'bar'"""), errors.ERROR_ID_IS_NODE_TYPE)
 
         # Test unknown field
         self.assert_parse_fail(
@@ -698,7 +690,7 @@ class TestParser(testcase.IDLTestcase):
                 type: foo
                 values:
                     v1: 0
-                """), idl.errors.ERROR_ID_UNKNOWN_NODE)
+                """), errors.ERROR_ID_UNKNOWN_NODE)
 
         # test duplicate field
         self.assert_parse_fail(
@@ -710,14 +702,14 @@ class TestParser(testcase.IDLTestcase):
                 type: foo
                 values:
                     v1: 0
-                """), idl.errors.ERROR_ID_DUPLICATE_NODE)
+                """), errors.ERROR_ID_DUPLICATE_NODE)
 
         # test list instead of scalar
         self.assert_parse_fail(
             textwrap.dedent("""
         enums:
             - foo:
-            """), idl.errors.ERROR_ID_IS_NODE_TYPE, multiple=True)
+            """), errors.ERROR_ID_IS_NODE_TYPE, multiple=True)
 
         # test list instead of scalar
         self.assert_parse_fail(
@@ -725,7 +717,7 @@ class TestParser(testcase.IDLTestcase):
         enums:
             foo:
                 - bar
-            """), idl.errors.ERROR_ID_IS_NODE_TYPE, multiple=True)
+            """), errors.ERROR_ID_IS_NODE_TYPE, multiple=True)
 
         # test missing type field
         self.assert_parse_fail(
@@ -735,7 +727,7 @@ class TestParser(testcase.IDLTestcase):
                 description: foo
                 values:
                     v1: 0
-            """), idl.errors.ERROR_ID_MISSING_REQUIRED_FIELD)
+            """), errors.ERROR_ID_MISSING_REQUIRED_FIELD)
 
         # test missing values field
         self.assert_parse_fail(
@@ -744,7 +736,7 @@ class TestParser(testcase.IDLTestcase):
             foo:
                 description: foo
                 type: foo
-            """), idl.errors.ERROR_ID_BAD_EMPTY_ENUM)
+            """), errors.ERROR_ID_BAD_EMPTY_ENUM)
 
         # Test no values
         self.assert_parse_fail(
@@ -753,7 +745,7 @@ class TestParser(testcase.IDLTestcase):
             foo:
                 description: foo
                 type: int
-            """), idl.errors.ERROR_ID_BAD_EMPTY_ENUM)
+            """), errors.ERROR_ID_BAD_EMPTY_ENUM)
 
         # Name collision with types
         self.assert_parse_fail(
@@ -773,7 +765,7 @@ class TestParser(testcase.IDLTestcase):
                 type: foo
                 values:
                     v1: 0
-            """), idl.errors.ERROR_ID_DUPLICATE_SYMBOL)
+            """), errors.ERROR_ID_DUPLICATE_SYMBOL)
 
         # Name collision with structs
         self.assert_parse_fail(
@@ -800,7 +792,7 @@ class TestParser(testcase.IDLTestcase):
                 type: foo
                 values:
                     v1: 0
-            """), idl.errors.ERROR_ID_DUPLICATE_SYMBOL)
+            """), errors.ERROR_ID_DUPLICATE_SYMBOL)
 
         # Test int - duplicate names
         self.assert_parse_fail(
@@ -812,7 +804,7 @@ class TestParser(testcase.IDLTestcase):
                 values:
                     v1: 0
                     v1: 1
-            """), idl.errors.ERROR_ID_DUPLICATE_NODE)
+            """), errors.ERROR_ID_DUPLICATE_NODE)
 
     def test_command_positive(self):
         # type: () -> None
@@ -890,7 +882,7 @@ class TestParser(testcase.IDLTestcase):
             textwrap.dedent("""
         commands:
             foo: foo
-            """), idl.errors.ERROR_ID_IS_NODE_TYPE)
+            """), errors.ERROR_ID_IS_NODE_TYPE)
 
         # unknown field
         self.assert_parse_fail(
@@ -902,7 +894,7 @@ class TestParser(testcase.IDLTestcase):
                 foo: bar
                 fields:
                     foo: bar
-            """), idl.errors.ERROR_ID_UNKNOWN_NODE)
+            """), errors.ERROR_ID_UNKNOWN_NODE)
 
         # strict is a bool
         self.assert_parse_fail(
@@ -914,7 +906,7 @@ class TestParser(testcase.IDLTestcase):
                 namespace: ignored
                 fields:
                     foo: bar
-            """), idl.errors.ERROR_ID_IS_NODE_VALID_BOOL)
+            """), errors.ERROR_ID_IS_NODE_VALID_BOOL)
 
         # Namespace is required
         self.assert_parse_fail(
@@ -924,7 +916,7 @@ class TestParser(testcase.IDLTestcase):
                 description: foo
                 fields:
                     foo: bar
-            """), idl.errors.ERROR_ID_MISSING_REQUIRED_FIELD)
+            """), errors.ERROR_ID_MISSING_REQUIRED_FIELD)
 
         # Namespace is wrong
         self.assert_parse_fail(
@@ -935,7 +927,7 @@ class TestParser(testcase.IDLTestcase):
                 namespace: foo
                 fields:
                     foo: bar
-            """), idl.errors.ERROR_ID_BAD_COMMAND_NAMESPACE)
+            """), errors.ERROR_ID_BAD_COMMAND_NAMESPACE)
 
         # Setup some common types
         test_preamble = textwrap.dedent("""
@@ -963,7 +955,7 @@ class TestParser(testcase.IDLTestcase):
                     description: foo
                     fields:
                         foo: foo
-            """), idl.errors.ERROR_ID_DUPLICATE_SYMBOL)
+            """), errors.ERROR_ID_DUPLICATE_SYMBOL)
 
         # Commands and types with same name
         self.assert_parse_fail(test_preamble + textwrap.dedent("""
@@ -974,7 +966,7 @@ class TestParser(testcase.IDLTestcase):
                     strict: true
                     fields:
                         foo: string
-            """), idl.errors.ERROR_ID_DUPLICATE_SYMBOL)
+            """), errors.ERROR_ID_DUPLICATE_SYMBOL)
 
         # Namespace concatenate_with_db
         self.assert_parse_fail(
@@ -986,7 +978,7 @@ class TestParser(testcase.IDLTestcase):
                 type: foobar
                 fields:
                     foo: bar
-            """), idl.errors.ERROR_ID_IS_COMMAND_TYPE_EXTRANEOUS)
+            """), errors.ERROR_ID_IS_COMMAND_TYPE_EXTRANEOUS)
 
     def test_command_doc_sequence_positive(self):
         # type: () -> None
@@ -1035,7 +1027,7 @@ class TestParser(testcase.IDLTestcase):
                     foo:
                         type: bar
                         supports_doc_sequence: foo
-            """), idl.errors.ERROR_ID_IS_NODE_VALID_BOOL)
+            """), errors.ERROR_ID_IS_NODE_VALID_BOOL)
 
     def test_command_type_positive(self):
         # type: () -> None
@@ -1090,7 +1082,7 @@ class TestParser(testcase.IDLTestcase):
                 namespace: type
                 fields:
                     foo: bar
-            """), idl.errors.ERROR_ID_MISSING_REQUIRED_FIELD)
+            """), errors.ERROR_ID_MISSING_REQUIRED_FIELD)
 
 
 if __name__ == '__main__':

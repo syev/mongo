@@ -6,11 +6,11 @@ import collections
 import optparse
 import os
 
-from . import config as _config
-from . import errors
-from . import utils
-from .testing import suite as _suite
-from .. import resmokeconfig
+import resmokeconfig
+from resmokelib import config as _config
+from resmokelib import errors
+from resmokelib import utils
+from resmokelib.testing import suite as _suite
 
 
 def get_named_suites():

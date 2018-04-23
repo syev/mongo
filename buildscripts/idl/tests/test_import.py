@@ -22,19 +22,12 @@ import textwrap
 import unittest
 from typing import Any, Dict
 
-# import package so that it works regardless of whether we run as a module or file
-if __package__ is None:
-    import sys
-    from os import path
-    sys.path.append(path.dirname(path.abspath(__file__)))
-    from context import idl
-    import testcase
-else:
-    from .context import idl
-    from . import testcase
+from idl.idl import errors
+from idl.idl import parser
+from idl.tests import testcase
 
 
-class DictionaryImportResolver(idl.parser.ImportResolverBase):
+class DictionaryImportResolver(parser.ImportResolverBase):
     """An import resolver resolves files from a dictionary."""
 
     def __init__(self, import_dict):
@@ -76,19 +69,19 @@ class TestImport(testcase.IDLTestcase):
 
         imports:
             - "b.idl"
-            """), idl.errors.ERROR_ID_DUPLICATE_NODE)
+            """), errors.ERROR_ID_DUPLICATE_NODE)
 
         self.assert_parse_fail(
             textwrap.dedent("""
         imports: "basetypes.idl"
-            """), idl.errors.ERROR_ID_IS_NODE_TYPE)
+            """), errors.ERROR_ID_IS_NODE_TYPE)
 
         self.assert_parse_fail(
             textwrap.dedent("""
         imports:
             a: "a.idl"
             b: "b.idl"
-            """), idl.errors.ERROR_ID_IS_NODE_TYPE)
+            """), errors.ERROR_ID_IS_NODE_TYPE)
 
     def test_import_positive(self):
         # type: () -> None
@@ -368,7 +361,7 @@ class TestImport(testcase.IDLTestcase):
             textwrap.dedent("""
         imports:
             - "notfound.idl"
-            """), idl.errors.ERROR_ID_BAD_IMPORT, resolver=resolver)
+            """), errors.ERROR_ID_BAD_IMPORT, resolver=resolver)
 
         # Duplicate types
         self.assert_parse_fail(
@@ -381,7 +374,7 @@ class TestImport(testcase.IDLTestcase):
                 description: foo
                 cpp_type: foo
                 bson_serialization_type: string
-            """), idl.errors.ERROR_ID_DUPLICATE_SYMBOL, resolver=resolver)
+            """), errors.ERROR_ID_DUPLICATE_SYMBOL, resolver=resolver)
 
         # Duplicate structs
         self.assert_parse_fail(
@@ -394,7 +387,7 @@ class TestImport(testcase.IDLTestcase):
                 description: foo
                 fields:
                     foo1: string
-            """), idl.errors.ERROR_ID_DUPLICATE_SYMBOL, resolver=resolver)
+            """), errors.ERROR_ID_DUPLICATE_SYMBOL, resolver=resolver)
 
         # Duplicate struct and type
         self.assert_parse_fail(
@@ -407,7 +400,7 @@ class TestImport(testcase.IDLTestcase):
                 description: foo
                 fields:
                     foo1: string
-            """), idl.errors.ERROR_ID_DUPLICATE_SYMBOL, resolver=resolver)
+            """), errors.ERROR_ID_DUPLICATE_SYMBOL, resolver=resolver)
 
         # Duplicate type and struct
         self.assert_parse_fail(
@@ -420,7 +413,7 @@ class TestImport(testcase.IDLTestcase):
                 description: foo
                 cpp_type: foo
                 bson_serialization_type: string
-            """), idl.errors.ERROR_ID_DUPLICATE_SYMBOL, resolver=resolver)
+            """), errors.ERROR_ID_DUPLICATE_SYMBOL, resolver=resolver)
 
         # Duplicate enums
         self.assert_parse_fail(
@@ -435,7 +428,7 @@ class TestImport(testcase.IDLTestcase):
                 values:
                     a0: 0
                     b1: 1
-            """), idl.errors.ERROR_ID_DUPLICATE_SYMBOL, resolver=resolver)
+            """), errors.ERROR_ID_DUPLICATE_SYMBOL, resolver=resolver)
 
         # Import a file with errors
         self.assert_parse_fail(
@@ -449,7 +442,7 @@ class TestImport(testcase.IDLTestcase):
                 description: foo
                 cpp_type: foo
                 bson_serialization_type: string
-            """), idl.errors.ERROR_ID_MISSING_REQUIRED_FIELD, resolver=resolver)
+            """), errors.ERROR_ID_MISSING_REQUIRED_FIELD, resolver=resolver)
 
 
 if __name__ == '__main__':
