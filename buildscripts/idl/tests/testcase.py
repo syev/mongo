@@ -19,13 +19,16 @@ from __future__ import absolute_import, print_function, unicode_literals
 import unittest
 from typing import Any, Tuple
 
+from idl.idl import ast
 from idl.idl import binder
+from idl.idl import errors as _errors
 from idl.idl import generator
 from idl.idl import parser
+from idl.idl import syntax
 
 
 def errors_to_str(errors):
-    # type: (idl.errors.ParserErrorCollection) -> unicode
+    # type: (_errors.ParserErrorCollection) -> unicode
     """Dump the list of errors as a multiline text string."""
     if errors is not None:
         return "\n".join(errors.to_list())
@@ -40,7 +43,7 @@ class NothingImportResolver(parser.ImportResolverBase):
         """Return the complete path to an imported file name."""
         raise NotImplementedError()
 
-    def open(self, imported_file_name):
+    def open(self, resolved_file_name):
         # type: (unicode) -> Any
         """Return an io.Stream for the requested file."""
         raise NotImplementedError()
@@ -50,7 +53,7 @@ class IDLTestcase(unittest.TestCase):
     """IDL Test case base class."""
 
     def _parse(self, doc_str, resolver):
-        # type: (unicode, parser.ImportResolverBase) -> idl.syntax.IDLParsedSpec
+        # type: (unicode, parser.ImportResolverBase) -> syntax.IDLParsedSpec
         """Parse a document and throw a unittest failure if it fails to parse as a valid YAML document."""
 
         try:
@@ -59,7 +62,7 @@ class IDLTestcase(unittest.TestCase):
             self.fail("Failed to parse document:\n%s" % (doc_str))
 
     def _assert_parse(self, doc_str, parsed_doc):
-        # type: (unicode, idl.syntax.IDLParsedSpec) -> None
+        # type: (unicode, syntax.IDLParsedSpec) -> None
         """Assert a document parsed correctly by the IDL compiler and returned no errors."""
         self.assertIsNone(parsed_doc.errors,
                           "Expected no parser errors\nFor document:\n%s\nReceived errors:\n\n%s" %
@@ -98,7 +101,7 @@ class IDLTestcase(unittest.TestCase):
             (doc_str, error_id, errors_to_str(parsed_doc.errors)))
 
     def assert_bind(self, doc_str, resolver=NothingImportResolver()):
-        # type: (unicode, parser.ImportResolverBase) -> idl.ast.IDLBoundSpec
+        # type: (unicode, parser.ImportResolverBase) -> ast.IDLAST
         """Assert a document parsed and bound correctly by the IDL compiler and returned no errors."""
         parsed_doc = self._parse(doc_str, resolver)
         self._assert_parse(doc_str, parsed_doc)
