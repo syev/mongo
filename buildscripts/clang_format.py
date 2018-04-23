@@ -25,7 +25,6 @@ from distutils import spawn  # pylint: disable=no-name-in-module
 from optparse import OptionParser
 from multiprocessing import cpu_count
 
-
 from linter import git
 from linter import parallel
 

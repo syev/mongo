@@ -24,7 +24,6 @@ import unittest
 from idl.idl import errors
 from idl.tests import testcase
 
-
 # All YAML tests assume 4 space indent
 INDENT_SPACE_COUNT = 4
 
@@ -413,8 +412,7 @@ class TestBinder(testcase.IDLTestcase):
                         bson_serialization_type: %s
                         serializer: foo
                         deserializer: BSONElement::fake
-                    """ % (bson_type)),
-                errors.ERROR_ID_CUSTOM_SCALAR_SERIALIZATION_NOT_SUPPORTED)
+                    """ % (bson_type)), errors.ERROR_ID_CUSTOM_SCALAR_SERIALIZATION_NOT_SUPPORTED)
 
             self.assert_bind_fail(
                 textwrap.dedent("""
@@ -424,8 +422,7 @@ class TestBinder(testcase.IDLTestcase):
                         cpp_type: std::string
                         bson_serialization_type: %s
                         deserializer: foo
-                    """ % (bson_type)),
-                errors.ERROR_ID_CUSTOM_SCALAR_SERIALIZATION_NOT_SUPPORTED)
+                    """ % (bson_type)), errors.ERROR_ID_CUSTOM_SCALAR_SERIALIZATION_NOT_SUPPORTED)
 
         # Test 'any' serialization needs deserializer
         self.assert_bind_fail(

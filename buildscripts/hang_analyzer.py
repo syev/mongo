@@ -33,7 +33,7 @@ if _IS_WINDOWS:
     import win32event
     import win32api
 
-from resmokelib import core
+from resmokelib import core  # pylint: disable=wrong-import-position
 
 
 def call(args, logger):

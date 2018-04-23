@@ -31,7 +31,6 @@ import resmokelib
 from resmokelib import utils
 from resmokelib.utils import globstar
 
-
 # pylint: disable=too-many-lines
 
 LOGGER = logging.getLogger(__name__)

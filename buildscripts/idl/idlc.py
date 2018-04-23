@@ -21,7 +21,7 @@ import argparse
 import logging
 import sys
 
-import idl.compiler
+from idl.idl import compiler
 
 
 def main():
@@ -53,7 +53,7 @@ def main():
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
 
-    compiler_args = idl.compiler.CompilerArgs()
+    compiler_args = compiler.CompilerArgs()
 
     compiler_args.input_file = args.file
     compiler_args.import_directories = args.include
@@ -71,7 +71,7 @@ def main():
         sys.exit(1)
 
     # Compile the IDL document the user specified
-    success = idl.compiler.compile_idl(compiler_args)
+    success = compiler.compile_idl(compiler_args)
 
     if not success:
         sys.exit(1)

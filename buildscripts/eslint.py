@@ -24,7 +24,6 @@ import urllib
 from distutils import spawn  # pylint: disable=no-name-in-module
 from optparse import OptionParser
 
-
 from linter import git
 from linter import parallel
 
