@@ -18,6 +18,7 @@ import posixpath
 import subprocess
 import sys
 import textwrap
+import time
 import warnings
 
 import yaml
@@ -149,6 +150,10 @@ class TestHistorySource(object):
         self._start_revision = start_revision
         self._end_revision = end_revision
         self._thread_pool = multiprocessing.dummy.Pool(thread_pool_size)
+        self._avg = 0
+        self._count = 0
+        self._max = 0
+        self._min = 0
 
     def get_history_data(self, tests, tasks):
         """Retrieve the history data for the given tests and tasks.
@@ -165,10 +170,21 @@ class TestHistorySource(object):
         return history_data
 
     def _get_task_history_data(self, tests, task):
-        test_history = tf.TestHistory(project=self._project, tests=tests, tasks=[task],
-                                      variants=self._variants, distros=self._distros)
-        return test_history.get_history_by_revision(start_revision=self._start_revision,
-                                                    end_revision=self._end_revision)
+        try:
+            start = time.time()
+            test_history = tf.TestHistory(project=self._project, tests=tests, tasks=[task],
+                                          variants=self._variants, distros=self._distros)
+            return test_history.get_history_by_revision(start_revision=self._start_revision,
+                                                        end_revision=self._end_revision)
+        finally:
+            end = time.time()
+            duration = end - start
+            if duration > self._max:
+                self._max = duration
+            if duration < self._min:
+                self._min = duration
+            self._avg = (self._avg * self._count + duration) / (self._count + 1)
+            self._count += 1
 
 
 def callo(args):
@@ -1098,6 +1114,7 @@ def main():  # pylint: disable=too-many-branches,too-many-locals,too-many-statem
     LOGGER.info("Updating the tags")
     nb_groups = len(test_groups)
     count = 0
+    total_api_duration = 0
     for tests in test_groups:
         LOGGER.info("Progress: %s %%", 100 * count / nb_groups)
         count += 1
@@ -1110,11 +1127,21 @@ def main():  # pylint: disable=too-many-branches,too-many-locals,too-many-statem
         if not tasks:
             LOGGER.warning("No tasks found for tests %s, skipping this group.", tests)
             continue
+        start = time.time()
         history_data = test_history_source.get_history_data(tests, tasks)
+        end = time.time()
+        total_api_duration += end - start
         if not history_data:
             continue
         report = tf.Report(history_data)
         update_tags(lifecycle_tags_file.changelog_lifecycle, config, report, tests)
+
+    LOGGER.info("Querying the API")
+    LOGGER.info("total: %.2f", total_api_duration)
+    LOGGER.info("num_queries: %s", test_history_source._count)
+    LOGGER.info("average time: %s", test_history_source._avg)
+    LOGGER.info("max time: %s", test_history_source._max)
+    LOGGER.info("min time: %s", test_history_source._min)
 
     # Remove tags that are no longer relevant
     clean_up_tags(lifecycle_tags_file.changelog_lifecycle, evg_conf)
