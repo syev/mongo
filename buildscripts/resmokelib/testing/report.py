@@ -91,7 +91,6 @@ class TestReport(unittest.TestResult):  # pylint: disable=too-many-instance-attr
 
     def startTest(self, test):  # pylint: disable=invalid-name
         """Call before 'test' is run."""
-        self.job_logger.info("startTest(%s)", test)
 
         unittest.TestResult.startTest(self, test)
 
@@ -119,7 +118,6 @@ class TestReport(unittest.TestResult):  # pylint: disable=too-many-instance-attr
 
     def stopTest(self, test):  # pylint: disable=invalid-name
         """Call after 'test' has run."""
-        self.job_logger.info("stopTest(%s)", test)
 
         unittest.TestResult.stopTest(self, test)
 
@@ -142,7 +140,6 @@ class TestReport(unittest.TestResult):  # pylint: disable=too-many-instance-attr
 
     def addError(self, test, err):  # pylint: disable=invalid-name
         """Call when a non-failureException was raised during the execution of 'test'."""
-        self.job_logger.info("addError(%s, %s)", test, err)
 
         unittest.TestResult.addError(self, test, err)
 
@@ -177,7 +174,6 @@ class TestReport(unittest.TestResult):  # pylint: disable=too-many-instance-attr
 
     def addFailure(self, test, err):  # pylint: disable=invalid-name
         """Call when a failureException was raised during the execution of 'test'."""
-        self.job_logger.info("addFailure(%s, %s)", test, err)
 
         unittest.TestResult.addFailure(self, test, err)
 
@@ -196,7 +192,6 @@ class TestReport(unittest.TestResult):  # pylint: disable=too-many-instance-attr
 
     def setFailure(self, test, return_code=1):  # pylint: disable=invalid-name
         """Change the outcome of an existing test to a failure."""
-        self.job_logger.info("setFailure(%s, %s)", test, return_code)
 
         with self._lock:
             test_info = self.find_test_info(test)
@@ -220,7 +215,6 @@ class TestReport(unittest.TestResult):  # pylint: disable=too-many-instance-attr
 
     def addSuccess(self, test):  # pylint: disable=invalid-name
         """Call when 'test' executed successfully."""
-        self.job_logger.info("addSuccess(%s)", test)
 
         unittest.TestResult.addSuccess(self, test)
 
