@@ -11,7 +11,7 @@ from ..testing.testcases import fixture as _fixture
 from ..utils import queue as _queue
 
 
-class Job(object):
+class Job(object):  # disable=too-many-instance-attributes
     """Run tests from a queue."""
 
     def __init__(  # pylint: disable=too-many-arguments
@@ -34,11 +34,19 @@ class Job(object):
             isinstance(hook, stepdown.ContinuousStepdown) for hook in self.hooks)
 
     def setup_fixture(self):
+        """Run a test that sets up the job's fixture and waits for it to be ready.
+
+        Return True if the setup was successful, False otherwise.
+        """
         test_case = _fixture.FixtureSetupTestCase(self.fixture, "job{}".format(self.job_num))
         test_case(self.report)
         return self.report.find_test_info(test_case).status == "pass"
 
     def teardown_fixture(self):
+        """Run a test that tears down the job's fixture.
+
+        Return True if the teardown was successful, False otherwise.
+        """
         test_case = _fixture.FixtureTeardownTestCase(self.fixture, "job{}".format(self.job_num))
         test_case(self.report)
         return self.report.find_test_info(test_case).status == "pass"
