@@ -7,6 +7,7 @@ import sys
 from .. import config
 from .. import errors
 from ..testing.hooks import stepdown
+from ..testing.testcases import fixture as _fixture
 from ..utils import queue as _queue
 
 
@@ -14,9 +15,10 @@ class Job(object):
     """Run tests from a queue."""
 
     def __init__(  # pylint: disable=too-many-arguments
-            self, logger, fixture, hooks, report, archival, suite_options):
+            self, job_num, logger, fixture, hooks, report, archival, suite_options):
         """Initialize the job with the specified fixture and hooks."""
 
+        self.job_num = job_num
         self.logger = logger
         self.fixture = fixture
         self.hooks = hooks
@@ -31,42 +33,87 @@ class Job(object):
         self._check_if_fixture_running = not any(
             isinstance(hook, stepdown.ContinuousStepdown) for hook in self.hooks)
 
-    def __call__(self, queue, interrupt_flag, teardown_flag=None):
+    def setup_fixture(self):
+        test_case = _fixture.FixtureSetupTestCase(self.fixture, "job{}".format(self.job_num))
+        test_case(self.report)
+        return self.report.find_test_info(test_case).status == "pass"
+
+    def teardown_fixture(self):
+        test_case = _fixture.FixtureTeardownTestCase(self.fixture, "job{}".format(self.job_num))
+        test_case(self.report)
+        return self.report.find_test_info(test_case).status == "pass"
+
+    @staticmethod
+    def _interrupt_all_jobs(queue, interrupt_flag):
+        # Set the interrupt flag so that other jobs do not start running more tests.
+        interrupt_flag.set()
+        # Drain the queue to unblock the main thread.
+        Job._drain_queue(queue)
+
+    def __call__(self, queue, interrupt_flag, setup_flag=None, teardown_flag=None):
         """Continuously execute tests from 'queue' and records their details in 'report'.
 
-        If 'teardown_flag' is not None, then 'self.fixture.teardown()'
-        will be called before this method returns. If an error occurs
-        while destroying the fixture, then the 'teardown_flag' will be
-        set.
+        If 'setup_flag' is not None, then a test to set up the fixture will be run
+        before running any other test. If an error occurs while setting up the fixture,
+        then the 'setup_flag' will be set.
+        If 'teardown_flag' is not None, then a test to tear down the fixture
+        will be run before this method returns. If an error occurs
+        while destroying the fixture, then the 'teardown_flag' will be set.
         """
+        if setup_flag is not None and not self.setup_fixture():
+            self._interrupt_all_jobs(queue, interrupt_flag)
+            return
 
-        should_stop = False
         try:
             self._run(queue, interrupt_flag)
         except errors.StopExecution as err:
             # Stop running tests immediately.
             self.logger.error("Received a StopExecution exception: %s.", err)
-            should_stop = True
+            self._interrupt_all_jobs(queue, interrupt_flag)
         except:  # pylint: disable=bare-except
             # Unknown error, stop execution.
             self.logger.exception("Encountered an error during test execution.")
-            should_stop = True
+            self._interrupt_all_jobs(queue, interrupt_flag)
 
-        if should_stop:
-            # Set the interrupt flag so that other jobs do not start running more tests.
-            interrupt_flag.set()
-            # Drain the queue to unblock the main thread.
-            Job._drain_queue(queue)
+        if teardown_flag is not None and not self.teardown_fixture():
+            teardown_flag.set()
 
-        if teardown_flag is not None:
-            try:
-                self.fixture.teardown(finished=True)
-            except errors.ServerFailure as err:
-                self.logger.warn("Teardown of %s was not successful: %s", self.fixture, err)
-                teardown_flag.set()
-            except:  # pylint: disable=bare-except
-                self.logger.exception("Encountered an error while tearing down %s.", self.fixture)
-                teardown_flag.set()
+    # def __call__(self, queue, interrupt_flag, teardown_flag=None):
+    #     """Continuously execute tests from 'queue' and records their details in 'report'.
+    #
+    #     If 'teardown_flag' is not None, then 'self.fixture.teardown()'
+    #     will be called before this method returns. If an error occurs
+    #     while destroying the fixture, then the 'teardown_flag' will be
+    #     set.
+    #     """
+    #
+    #     should_stop = False
+    #     try:
+    #         self._run(queue, interrupt_flag)
+    #     except errors.StopExecution as err:
+    #         # Stop running tests immediately.
+    #         self.logger.error("Received a StopExecution exception: %s.", err)
+    #         should_stop = True
+    #     except:  # pylint: disable=bare-except
+    #         # Unknown error, stop execution.
+    #         self.logger.exception("Encountered an error during test execution.")
+    #         should_stop = True
+    #
+    #     if should_stop:
+    #         # Set the interrupt flag so that other jobs do not start running more tests.
+    #         interrupt_flag.set()
+    #         # Drain the queue to unblock the main thread.
+    #         Job._drain_queue(queue)
+    #
+    #     if teardown_flag is not None:
+    #         try:
+    #             self.fixture.teardown(finished=True)
+    #         except errors.ServerFailure as err:
+    #             self.logger.warn("Teardown of %s was not successful: %s", self.fixture, err)
+    #             teardown_flag.set()
+    #         except:  # pylint: disable=bare-except
+    #             self.logger.exception("Encountered an error while tearing down %s.", self.fixture)
+    #             teardown_flag.set()
 
     def _run(self, queue, interrupt_flag):
         """Call the before/after suite hooks and continuously execute tests from 'queue'."""
