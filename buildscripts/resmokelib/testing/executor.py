@@ -50,6 +50,8 @@ class TestSuiteExecutor(object):  # pylint: disable=too-many-instance-attributes
 
         self._suite = suite
 
+        self.test_queue_logger = self.logger.new_testqueue_logger(suite.test_kind)
+
         # Only start as many jobs as we need. Note this means that the number of jobs we run may
         # not actually be _config.JOBS or self._suite.options.num_jobs.
         jobs_to_start = self._suite.options.num_jobs
@@ -250,7 +252,7 @@ class TestSuiteExecutor(object):  # pylint: disable=too-many-instance-attributes
         report = _report.TestReport(job_logger, self._suite.options)
 
         return _job.Job(job_num, job_logger, fixture, hooks, report, self.archival,
-                        self._suite.options)
+                        self._suite.options, self.test_queue_logger)
 
     def _make_test_queue(self):
         """Return a queue of TestCase instances.
@@ -259,12 +261,11 @@ class TestSuiteExecutor(object):  # pylint: disable=too-many-instance-attributes
         that the test cases can be dispatched to multiple threads.
         """
 
-        test_queue_logger = self.logger.new_testqueue_logger(self._suite.test_kind)
         # Put all the test cases in a queue.
         queue = _queue.Queue()
         for _ in range(self._suite.options.num_repeat_tests):
             for test_name in self._suite.tests:
-                test_case = testcases.make_test_case(self._suite.test_kind, test_queue_logger,
+                test_case = testcases.make_test_case(self._suite.test_kind, self.test_queue_logger,
                                                      test_name, **self.test_config)
                 queue.put(test_case)
 
