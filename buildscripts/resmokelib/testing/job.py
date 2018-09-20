@@ -12,7 +12,7 @@ from ..testing.testcases import fixture as _fixture
 from ..utils import queue as _queue
 
 
-class Job(object):  # disable=too-many-instance-attributes
+class Job(object):  # pylint: disable=too-many-instance-attributes
     """Run tests from a queue."""
 
     def __init__(  # pylint: disable=too-many-arguments
@@ -43,8 +43,8 @@ class Job(object):  # disable=too-many-instance-attributes
         """
         if isinstance(self.fixture, _fixtures.NoOpFixture):
             return True
-        test_case = _fixture.FixtureSetupTestCase(self.test_queue_logger,
-                                                  self.fixture, "job{}".format(self.job_num))
+        test_case = _fixture.FixtureSetupTestCase(self.test_queue_logger, self.fixture,
+                                                  "job{}".format(self.job_num))
         test_case(self.report)
         return self.report.find_test_info(test_case).status == "pass"
 
@@ -55,8 +55,8 @@ class Job(object):  # disable=too-many-instance-attributes
         """
         if isinstance(self.fixture, _fixtures.NoOpFixture):
             return True
-        test_case = _fixture.FixtureTeardownTestCase(self.test_queue_logger,
-                                                     self.fixture, "job{}".format(self.job_num))
+        test_case = _fixture.FixtureTeardownTestCase(self.test_queue_logger, self.fixture,
+                                                     "job{}".format(self.job_num))
         test_case(self.report)
         return self.report.find_test_info(test_case).status == "pass"
 

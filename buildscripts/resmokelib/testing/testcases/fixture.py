@@ -1,29 +1,33 @@
+"""The unittest.TestCase instances for setting up and tearing down fixtures."""
 from buildscripts.resmokelib.testing.testcases import interface
 from buildscripts.resmokelib.utils import registry
 
 
-class FixtureTestCase(interface.TestCase):
+class FixtureTestCase(interface.TestCase):  # pylint: disable=abstract-method
+    """Base class for the fixture test cases."""
 
     REGISTERED_NAME = registry.LEAVE_UNREGISTERED
 
     def __init__(self, logger, job_name, phase):
-        assert phase in ("setup", "teardown")
-        interface.TestCase.__init__(self, logger,
-                                    "Fixture test", "{}_fixture_{}".format(job_name, phase),
-                                    dynamic=True)
+        """Initialize the FixtureTestCase."""
+        interface.TestCase.__init__(self, logger, "Fixture test", "{}_fixture_{}".format(
+            job_name, phase), dynamic=True)
         self.job_name = job_name
 
 
 class FixtureSetupTestCase(FixtureTestCase):
+    """TestCase for setting up a fixture."""
 
     REGISTERED_NAME = registry.LEAVE_UNREGISTERED
     PHASE = "setup"
 
     def __init__(self, logger, fixture, job_name):
+        """Initialize the FixtureSetupTestCase."""
         FixtureTestCase.__init__(self, logger, job_name, self.PHASE)
         self.fixture = fixture
 
     def run_test(self):
+        """Set up the fixture and wait for it to be ready."""
         self.return_code = 2
         self.logger.info("Starting the setup of %s", self.fixture)
         self.fixture.setup()
@@ -34,15 +38,18 @@ class FixtureSetupTestCase(FixtureTestCase):
 
 
 class FixtureTeardownTestCase(FixtureTestCase):
+    """TestCase for tearing down a fixture."""
 
     REGISTERED_NAME = registry.LEAVE_UNREGISTERED
     PHASE = "teardown"
 
     def __init__(self, logger, fixture, job_name):
+        """Initialize the FixtureTeardownTestCase."""
         FixtureTestCase.__init__(self, logger, job_name, self.PHASE)
         self.fixture = fixture
 
     def run_test(self):
+        """Tear down the fixture."""
         self.return_code = 2
         self.logger.info("Starting the teardown of %s", self.fixture)
         self.fixture.teardown(finished=True)

@@ -108,7 +108,7 @@ class TestCase(unittest.TestCase):  # pylint: disable=too-many-instance-attribut
         """Run the specified test."""
         raise NotImplementedError("run_test must be implemented by TestCase subclasses")
 
-    def as_command(self):
+    def as_command(self):  # pylint: disable=no-self-use
         """Return the command invocation used to run the test or None."""
         return None
 
