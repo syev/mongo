@@ -78,6 +78,9 @@ class TestSuiteExecutor(object):  # pylint: disable=too-many-instance-attributes
         return_code = 0
         # The first run of the job will set up the fixture.
         setup_flag = threading.Event()
+        # We reset the internal state of the PortAllocator so that ports used by the fixture during
+        # a test suite run earlier can be reused during this current test suite.
+        network.PortAllocator.reset()
         teardown_flag = None
         try:
             num_repeat_suites = self._suite.options.num_repeat_suites
@@ -97,7 +100,7 @@ class TestSuiteExecutor(object):  # pylint: disable=too-many-instance-attributes
                 self._suite.record_test_end(report)
 
                 if setup_flag and setup_flag.is_set():
-                    self.logger.exception("Setup of one of the job fixtures failed")
+                    self.logger.error("Setup of one of the job fixtures failed")
                     return_code = 2
                     return
                 # Remove the setup flag once the first suite ran.
@@ -135,22 +138,6 @@ class TestSuiteExecutor(object):  # pylint: disable=too-many-instance-attributes
                 if not self._teardown_fixtures():
                     return_code = 2
             self._suite.return_code = return_code
-
-    def _setup_fixtures(self):
-        """Set up a fixture for each job."""
-
-        # We reset the internal state of the PortAllocator before calling job.fixture.setup() so
-        # that ports used by the fixture during a test suite run earlier can be reused during this
-        # current test suite.
-        network.PortAllocator.reset()
-
-        for job in self._jobs:
-            try:
-                job.setup_fixture()
-            except:  # pylint: disable=bare-except
-                self.logger.exception("Encountered an error while setting up %s.", job.fixture)
-                return False
-        return True
 
     def _run_tests(self, test_queue, setup_flag, teardown_flag):
         """Start a thread for each Job instance and block until all of the tests are run.
@@ -208,8 +195,8 @@ class TestSuiteExecutor(object):  # pylint: disable=too-many-instance-attributes
         success = True
         for job in self._jobs:
             if not job.teardown_fixture():
-                self.logger.warn("Teardown of %s of job %s was not successful", job.fixture,
-                                 job.job_num)
+                self.logger.warning("Teardown of %s of job %s was not successful", job.fixture,
+                                    job.job_num)
                 success = False
         return success
 
