@@ -28,13 +28,17 @@ class FixtureSetupTestCase(FixtureTestCase):
 
     def run_test(self):
         """Set up the fixture and wait for it to be ready."""
-        self.return_code = 2
-        self.logger.info("Starting the setup of %s", self.fixture)
-        self.fixture.setup()
-        self.logger.info("Waiting for %s to be ready", self.fixture)
-        self.fixture.await_ready()
-        self.logger.info("Finished the setup of %s", self.fixture)
-        self.return_code = 0
+        try:
+            self.return_code = 2
+            self.logger.info("Starting the setup of %s.", self.fixture)
+            self.fixture.setup()
+            self.logger.info("Waiting for %s to be ready.", self.fixture)
+            self.fixture.await_ready()
+            self.logger.info("Finished the setup of %s.", self.fixture)
+            self.return_code = 0
+        except:
+            self.logger.exception("An error occurred during the setup of %s.", self.fixture)
+            raise
 
 
 class FixtureTeardownTestCase(FixtureTestCase):
@@ -50,8 +54,12 @@ class FixtureTeardownTestCase(FixtureTestCase):
 
     def run_test(self):
         """Tear down the fixture."""
-        self.return_code = 2
-        self.logger.info("Starting the teardown of %s", self.fixture)
-        self.fixture.teardown(finished=True)
-        self.logger.info("Finished the teardown of %s", self.fixture)
-        self.return_code = 0
+        try:
+            self.return_code = 2
+            self.logger.info("Starting the teardown of %s.", self.fixture)
+            self.fixture.teardown(finished=True)
+            self.logger.info("Finished the teardown of %s.", self.fixture)
+            self.return_code = 0
+        except:
+            self.logger.exception("An error occurred during the teardown of %s.", self.fixture)
+            raise

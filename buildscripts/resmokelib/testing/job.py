@@ -46,7 +46,11 @@ class Job(object):  # pylint: disable=too-many-instance-attributes
         test_case = _fixture.FixtureSetupTestCase(self.test_queue_logger, self.fixture,
                                                   "job{}".format(self.job_num))
         test_case(self.report)
-        return self.report.find_test_info(test_case).status == "pass"
+        if self.report.find_test_info(test_case).status != "pass":
+            self.logger.error("The setup of %s failed.", self.fixture)
+            return False
+        else:
+            return True
 
     def teardown_fixture(self):
         """Run a test that tears down the job's fixture.
@@ -58,7 +62,11 @@ class Job(object):  # pylint: disable=too-many-instance-attributes
         test_case = _fixture.FixtureTeardownTestCase(self.test_queue_logger, self.fixture,
                                                      "job{}".format(self.job_num))
         test_case(self.report)
-        return self.report.find_test_info(test_case).status == "pass"
+        if self.report.find_test_info(test_case).status != "pass":
+            self.logger.error("The teardown of %s failed.", self.fixture)
+            return False
+        else:
+            return True
 
     @staticmethod
     def _interrupt_all_jobs(queue, interrupt_flag):
