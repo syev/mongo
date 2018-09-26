@@ -43,14 +43,16 @@ class Job(object):  # pylint: disable=too-many-instance-attributes
         """
         if isinstance(self.fixture, _fixtures.NoOpFixture):
             return True
+        # Workaround for EVG-5993: we write a log to the logkeeper "build" endpoint before the test
+        # starts so that the build logs are included in the test view.
+        self.fixture.logger.info("Setting up the fixture for job%s", self.job_num)
         test_case = _fixture.FixtureSetupTestCase(self.test_queue_logger, self.fixture,
                                                   "job{}".format(self.job_num))
         test_case(self.report)
         if self.report.find_test_info(test_case).status != "pass":
             self.logger.error("The setup of %s failed.", self.fixture)
             return False
-        else:
-            return True
+        return True
 
     def teardown_fixture(self):
         """Run a test that tears down the job's fixture.
@@ -65,8 +67,7 @@ class Job(object):  # pylint: disable=too-many-instance-attributes
         if self.report.find_test_info(test_case).status != "pass":
             self.logger.error("The teardown of %s failed.", self.fixture)
             return False
-        else:
-            return True
+        return True
 
     @staticmethod
     def _interrupt_all_jobs(queue, interrupt_flag):
